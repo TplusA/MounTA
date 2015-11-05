@@ -1,0 +1,13 @@
+/README.html
+/aclocal.m4
+/autom4te.cache/
+/config.h.in
+/config.h.in~
+/config/
+/configure
+/cscope.out
+/tags
+/types_c.taghl
+/types_js.taghl
+/types_py.taghl
+Makefile.in

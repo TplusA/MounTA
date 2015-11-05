@@ -1,0 +1,59 @@
+#
+# Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+#
+# This file is part of MounTA.
+#
+# MounTA is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License, version 3 as
+# published by the Free Software Foundation.
+#
+# MounTA is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with MounTA.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+ACLOCAL_AMFLAGS = -I ../m4
+
+bin_PROGRAMS = mounta
+
+mounta_SOURCES = \
+    mounta.cc messages.h messages.c \
+    dbus_iface.c dbus_iface.h dbus_iface_deep.h \
+    os.c os.h
+
+DBUS_IFACES = $(top_srcdir)/dbus_interfaces
+
+AM_CFLAGS = $(CWARNINGS)
+AM_CXXFLAGS = $(CXXWARNINGS)
+
+AM_CPPFLAGS = $(MOUNTA_DEPENDENCIES_CFLAGS)
+AM_CPPFLAGS += -I$(DBUS_IFACES)
+
+noinst_LTLIBRARIES = \
+    libmounta_dbus.la
+
+mounta_LDADD = $(noinst_LTLIBRARIES) $(MOUNTA_DEPENDENCIES_LIBS)
+
+nodist_libmounta_dbus_la_SOURCES = mounta_dbus.c mounta_dbus.h
+libmounta_dbus_la_CFLAGS = $(CRELAXEDWARNINGS)
+
+BUILT_SOURCES = \
+    $(nodist_libmounta_dbus_la_SOURCES) \
+    de_tahifi_mounta.h \
+    de_tahifi_mounta.md \
+    mounta_dbus.stamp
+
+CLEANFILES = $(BUILT_SOURCES)
+
+de_tahifi_mounta.h: mounta_dbus.stamp
+de_tahifi_mounta.md: mounta_dbus.stamp
+mounta_dbus.c: mounta_dbus.stamp
+mounta_dbus.h: mounta_dbus.stamp
+mounta_dbus.stamp: $(DBUS_IFACES)/de_tahifi_mounta.xml
+	$(GDBUS_CODEGEN) --generate-c-code=mounta_dbus --c-namespace tdbus --interface-prefix de.tahifi. $<
+	$(DBUS_IFACES)/extract_documentation.py -i $< -o de_tahifi_mounta.md -H de_tahifi_mounta.h -c tdbus -s de.tahifi. -n "$(PACKAGE_NAME)"
+	touch $@
