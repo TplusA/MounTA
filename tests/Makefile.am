@@ -40,14 +40,15 @@ AM_CXXFLAGS = $(CXXWARNINGS)
 LIBS += $(CPPCUTTER_LIBS)
 
 check_LTLIBRARIES = \
-    test_dummy.la
+    test_device_manager.la
 
-test_dummy_la_SOURCES = \
-    test_dummy.cc mock_expectation.hh \
+test_device_manager_la_SOURCES = \
+    test_device_manager.cc mock_expectation.hh \
     mock_messages.hh mock_messages.cc \
     mock_os.hh mock_os.cc
-test_lru_la_CFLAGS = $(AM_CFLAGS)
-test_lru_la_CXXFLAGS = $(AM_CXXFLAGS)
+test_device_manager_la_LIBADD = ../src/libdevice_manager.la
+test_device_manager_la_CFLAGS = $(AM_CFLAGS)
+test_device_manager_la_CXXFLAGS = $(AM_CXXFLAGS)
 
 CLEANFILES = test_report.xml test_report_junit.xml valgrind.xml
 
