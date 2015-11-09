@@ -16,32 +16,32 @@
  * along with MounTA.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef MOCK_OS_HH
-#define MOCK_OS_HH
+#ifndef MOCK_DEVICES_OS_HH
+#define MOCK_DEVICES_OS_HH
 
-#include "os.h"
+#include "devices_os.h"
 #include "mock_expectation.hh"
 
-class MockOs
+class MockDevicesOs
 {
   public:
-    MockOs(const MockOs &) = delete;
-    MockOs &operator=(const MockOs &) = delete;
-
     class Expectation;
     typedef MockExpectationsTemplate<Expectation> MockExpectations;
     MockExpectations *expectations_;
 
-    explicit MockOs();
-    ~MockOs();
+    MockDevicesOs(const MockDevicesOs &) = delete;
+    MockDevicesOs &operator=(const MockDevicesOs &) = delete;
+
+    explicit MockDevicesOs();
+    ~MockDevicesOs();
 
     void init();
     void check() const;
 
-    void expect_os_abort(void);
-    void expect_os_resolve_symlink(const char *retval, const char *link);
+    void expect_osdev_get_volume_information(const char *devname, const struct osdev_volume_info *info = nullptr);
+    void expect_osdev_free_volume_information(const struct osdev_volume_info *info);
 };
 
-extern MockOs *mock_os_singleton;
+extern MockDevicesOs *mock_devices_os_singleton;
 
-#endif /* !MOCK_OS_HH */
+#endif /* !MOCK_DEVICES_OS_HH */

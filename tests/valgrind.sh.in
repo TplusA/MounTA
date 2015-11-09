@@ -5,6 +5,9 @@ then
     exit 0
 fi
 
+GLIBCXX_FORCE_NEW=1
+export GLIBCXX_FORCE_NEW
+
 exec $VALGRIND \
     --trace-children=yes \
     --xml=yes --xml-file=valgrind.xml \

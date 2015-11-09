@@ -16,29 +16,25 @@
  * along with MounTA.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef OS_H
-#define OS_H
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
 
-#include <unistd.h>
+#include "devices_os.h"
+#include "messages.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+bool osdev_get_volume_information(const char *devname, struct osdev_volume_info *info)
+{
+    log_assert(devname != NULL);
+    log_assert(info != NULL);
 
-void os_abort(void);
-
-/*!
- * Read destination of symlink, if any.
- *
- * \returns
- *     A string to be freed by the caller, or \c NULL if the input name is not
- *     a symlink, the symlink is broken, or any kind of error is returned from
- *     the OS.
- */
-char *os_resolve_symlink(const char *link);
-
-#ifdef __cplusplus
+    BUG("osdev_get_volume_information() not implemented");
+    return false;
 }
-#endif
 
-#endif /* !OS_H */
+void osdev_free_volume_information(struct osdev_volume_info *info)
+{
+    log_assert(info != NULL);
+
+    BUG("osdev_get_volume_information() not implemented");
+}

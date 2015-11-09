@@ -34,9 +34,9 @@ class ID
   public:
     using value_type = unsigned short;
 
-  private:
     const value_type value_;
 
+  private:
     static constexpr value_type max_id_ = 1000;
     static value_type next_free_id_;
 
@@ -44,7 +44,7 @@ class ID
     explicit ID(): value_(::Devices::ID::get_next_id()) {}
 
   private:
-    value_type get_next_id()
+    static value_type get_next_id()
     {
         if(++next_free_id_ > max_id_)
             next_free_id_ = 1;
@@ -115,17 +115,35 @@ class Device
     Device(const Device &) = delete;
     Device &operator=(const Device &) = delete;
 
-    explicit Device(ID device_id):
+    explicit Device(ID device_id, const std::string &name):
         id_(device_id),
-        is_pending_(false),
+        name_(name),
+        is_pending_(true),
         root_hub_id_(0),
         hub_port_(0)
     {}
 
-    const std::string &get_name() const
-    {
-        return name_;
-    }
+    explicit Device(ID device_id, const std::string &name,
+                    const std::string &mountpoint_container_path,
+                    unsigned int root_hub_id, unsigned int hub_port):
+        id_(device_id),
+        name_(name),
+        mountpoint_container_path_(mountpoint_container_path),
+        is_pending_(false),
+        root_hub_id_(root_hub_id),
+        hub_port_(hub_port)
+    {}
+
+    ~Device();
+
+    const ID::value_type get_id() const { return id_.value_; }
+    const std::string &get_name() const { return name_; }
+
+    bool contains_volume(const char *devname) const;
+    bool add_volume(Volume &volume);
+
+    decltype(volumes_)::const_iterator begin() const { return volumes_.begin(); };
+    decltype(volumes_)::const_iterator end() const   { return volumes_.end(); };
 };
 
 /*!
@@ -191,21 +209,19 @@ class Volume
     Volume(const Volume &) = delete;
     Volume &operator=(const Volume &) = delete;
 
-    explicit Volume(Device &containing_device, int idx):
+    explicit Volume(Device &containing_device, int idx, const char *label,
+                    const char *devname):
         containing_device_(containing_device),
         index_(idx),
-        state_(PENDING)
+        state_(PENDING),
+        label_(label),
+        devname_(devname)
     {}
 
-    const Device *get_device() const
-    {
-        return &containing_device_;
-    }
-
-    const std::string &get_name() const
-    {
-        return devname_;
-    }
+    const Device *get_device() const { return &containing_device_; }
+    int get_index() const { return index_; }
+    const std::string &get_name() const { return label_; }
+    const std::string &get_device_name() const { return devname_; }
 };
 
 }

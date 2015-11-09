@@ -44,11 +44,12 @@ check_LTLIBRARIES = \
 
 test_device_manager_la_SOURCES = \
     test_device_manager.cc mock_expectation.hh \
+    mock_devices_os.hh mock_devices_os.cc \
     mock_messages.hh mock_messages.cc \
     mock_os.hh mock_os.cc
-test_device_manager_la_LIBADD = ../src/libdevice_manager.la
-test_device_manager_la_CFLAGS = $(AM_CFLAGS)
-test_device_manager_la_CXXFLAGS = $(AM_CXXFLAGS)
+test_device_manager_la_LIBADD = $(top_builddir)/src/libdevice_manager.la
+test_device_manager_la_CFLAGS = $(AM_CFLAGS) $(MOUNTA_DEPENDENCIES_CFLAGS)
+test_device_manager_la_CXXFLAGS = $(AM_CXXFLAGS) $(MOUNTA_DEPENDENCIES_CFLAGS)
 
 CLEANFILES = test_report.xml test_report_junit.xml valgrind.xml
 

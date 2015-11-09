@@ -21,10 +21,42 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "os.h"
+#include "messages.h"
 
 void os_abort(void)
 {
     abort();
+}
+
+char *os_resolve_symlink(const char *link)
+{
+    log_assert(link != NULL);
+
+    char dummy;
+
+    if(readlink(link, &dummy, sizeof(dummy)) < 0)
+    {
+        if(errno == EINVAL)
+            msg_error(errno, LOG_NOTICE,
+                      "Path \"%s\" is not a symlink", link);
+        else
+            msg_error(errno, LOG_NOTICE,
+                      "readlink() failed for path \"%s\"", link);
+
+        return NULL;
+    }
+
+    char *const result = realpath(link, NULL);
+
+    if(result == NULL)
+        msg_error(errno, LOG_NOTICE,
+                  "Failed resolving symlink \"%s\"", link);
+
+    return result;
 }
