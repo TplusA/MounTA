@@ -25,6 +25,7 @@ mounta_SOURCES = \
     devices.hh devices_util.h device_manager.hh \
     devices_os.h devices_os.c \
     fdevents.hh fdevents.cc \
+    automounter.hh automounter.cc \
     dbus_iface.c dbus_iface.h dbus_iface_deep.h \
     os.c os.h
 

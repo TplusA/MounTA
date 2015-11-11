@@ -27,6 +27,7 @@
 #include <glib-unix.h>
 
 #include "fdevents.hh"
+#include "automounter.hh"
 #include "dbus_iface.h"
 #include "messages.h"
 #include "versioninfo.h"
@@ -35,6 +36,10 @@ struct parameters
 {
     bool run_in_foreground;
     bool connect_to_session_dbus;
+    const char *working_directory;
+    const char *mount_tool;
+    const char *unmount_tool;
+    const char *blkid_tool;
 };
 
 static void show_version_info(void)
@@ -106,6 +111,10 @@ static int process_command_line(int argc, char *argv[],
 {
     parameters->run_in_foreground = false;
     parameters->connect_to_session_dbus = true;
+    parameters->mount_tool = "/bin/mount";
+    parameters->unmount_tool = "/bin/umount";
+    parameters->blkid_tool = "/sbin/blkid";
+    parameters->working_directory = "/tmp/MounTA";
 
     for(int i = 1; i < argc; ++i)
     {
@@ -132,18 +141,21 @@ static int process_command_line(int argc, char *argv[],
 
 static void handle_device_changes(FdEvents::EventType ev, const char *path, void *user_data)
 {
+    auto *data = static_cast<std::pair<Automounter::Core, GMainLoop *> *>(user_data);
+
     switch(ev)
     {
       case FdEvents::NEW_DEVICE:
-        msg_info("New device \"%s\"", path);
+        data->first.handle_new_device(path);
         break;
 
       case FdEvents::DEVICE_GONE:
-        msg_info("Removed device \"%s\"", path);
+        data->first.handle_removed_device(path);
         break;
 
       case FdEvents::SHUTDOWN:
-        g_main_loop_quit(static_cast<GMainLoop *>(user_data));
+        data->first.shutdown();
+        g_main_loop_quit(data->second);
         break;
     }
 }
@@ -155,9 +167,10 @@ static gboolean handle_fd_event(gint fd, GIOCondition condition, gpointer user_d
             : G_SOURCE_REMOVE);
 }
 
-static int setup_inotify_watch(FdEvents &ev, const char *path, GMainLoop *loop)
+static int setup_inotify_watch(FdEvents &ev, const char *path,
+                               std::pair<Automounter::Core, GMainLoop *> *data)
 {
-    int fd = ev.watch(path, handle_device_changes, loop);
+    int fd = ev.watch(path, handle_device_changes, data);
 
     if(fd < 0)
         return -1;
@@ -205,7 +218,12 @@ int main(int argc, char *argv[])
     g_unix_signal_add(SIGTERM, signal_handler, loop);
 
     static FdEvents ev;
-    if(setup_inotify_watch(ev, "/dev/disk/by-id", loop) < 0)
+    Automounter::ExternalTools tools(parameters.mount_tool, nullptr,
+                                     parameters.unmount_tool, nullptr,
+                                     parameters.blkid_tool, nullptr);
+    auto event_data =
+        std::make_pair(Automounter::Core(parameters.working_directory, tools), loop);
+    if(setup_inotify_watch(ev, "/dev/disk/by-id", &event_data) < 0)
         return EXIT_FAILURE;
 
     g_main_loop_run(loop);
