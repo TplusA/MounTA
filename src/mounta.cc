@@ -26,6 +26,7 @@
 #include <glib-object.h>
 #include <glib-unix.h>
 
+#include "fdevents.hh"
 #include "dbus_iface.h"
 #include "messages.h"
 #include "versioninfo.h"
@@ -129,6 +130,44 @@ static int process_command_line(int argc, char *argv[],
     return 0;
 }
 
+static void handle_device_changes(FdEvents::EventType ev, const char *path, void *user_data)
+{
+    switch(ev)
+    {
+      case FdEvents::NEW_DEVICE:
+        msg_info("New device \"%s\"", path);
+        break;
+
+      case FdEvents::DEVICE_GONE:
+        msg_info("Removed device \"%s\"", path);
+        break;
+
+      case FdEvents::SHUTDOWN:
+        g_main_loop_quit(static_cast<GMainLoop *>(user_data));
+        break;
+    }
+}
+
+static gboolean handle_fd_event(gint fd, GIOCondition condition, gpointer user_data)
+{
+    return (static_cast<FdEvents *>(user_data)->process()
+            ? G_SOURCE_CONTINUE
+            : G_SOURCE_REMOVE);
+}
+
+static int setup_inotify_watch(FdEvents &ev, const char *path, GMainLoop *loop)
+{
+    int fd = ev.watch(path, handle_device_changes, loop);
+
+    if(fd < 0)
+        return -1;
+
+    if(g_unix_fd_add(fd, G_IO_IN, handle_fd_event, &ev) <= 0)
+        return -1;
+
+    return 0;
+}
+
 static gboolean signal_handler(gpointer user_data)
 {
     g_main_loop_quit(static_cast<GMainLoop *>(user_data));
@@ -164,6 +203,10 @@ int main(int argc, char *argv[])
 
     g_unix_signal_add(SIGINT, signal_handler, loop);
     g_unix_signal_add(SIGTERM, signal_handler, loop);
+
+    static FdEvents ev;
+    if(setup_inotify_watch(ev, "/dev/disk/by-id", loop) < 0)
+        return EXIT_FAILURE;
 
     g_main_loop_run(loop);
 

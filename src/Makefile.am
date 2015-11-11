@@ -24,6 +24,7 @@ mounta_SOURCES = \
     mounta.cc messages.h messages.c \
     devices.hh device_manager.hh \
     devices_os.h devices_os.c \
+    fdevents.hh fdevents.cc \
     dbus_iface.c dbus_iface.h dbus_iface_deep.h \
     os.c os.h
 
