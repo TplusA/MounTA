@@ -157,7 +157,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     cppcut_assert_equal(expected_device, devs->new_entry(volume_names.device_identifier, &vol));
     cppcut_assert_not_null(vol);
     cppcut_assert_equal(expected_device, vol->get_device());
-    cppcut_assert_equal(volume_names.volume_label, vol->get_name().c_str());
+    cppcut_assert_equal(volume_names.volume_label, vol->get_label().c_str());
 
     cppcut_assert_equal(vol, expected_device->lookup_volume_by_devname(vol->get_device_name().c_str()));
 
@@ -183,7 +183,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     const Devices::Volume *vol;
     ret_device = devs->new_entry(volume_names.device_identifier, &vol);
     cppcut_assert_not_null(vol);
-    cppcut_assert_equal(volume_names.volume_label, vol->get_name().c_str());
+    cppcut_assert_equal(volume_names.volume_label, vol->get_label().c_str());
 
     if(expecting_null_device)
         cppcut_assert_null(ret_device);
@@ -235,7 +235,7 @@ void test_new_device_with_volumes()
     for(const auto &p : *it->second)
     {
         cppcut_assert_operator(volume_names.size(), >, i);
-        cppcut_assert_equal(volume_names[i].volume_label, p.second->get_name().c_str());
+        cppcut_assert_equal(volume_names[i].volume_label, p.second->get_label().c_str());
         ++i;
     }
 
@@ -271,7 +271,7 @@ void test_new_device_with_volume_on_whole_disk()
 
     cppcut_assert_equal(expected_volume.block_device_name, vol->get_device_name().c_str());
     cppcut_assert_equal(expected_volume.device_identifier, vol->get_device()->get_name().c_str());
-    cppcut_assert_equal(expected_volume.volume_label, vol->get_name().c_str());
+    cppcut_assert_equal(expected_volume.volume_label, vol->get_label().c_str());
     cppcut_assert_equal(-1, vol->get_index());
 }
 

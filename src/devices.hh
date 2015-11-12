@@ -220,7 +220,7 @@ class Volume
 
     const Device *get_device() const { return &containing_device_; }
     int get_index() const { return index_; }
-    const std::string &get_name() const { return label_; }
+    const std::string &get_label() const { return label_; }
     const std::string &get_device_name() const { return devname_; }
 };
 
