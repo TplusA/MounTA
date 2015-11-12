@@ -76,6 +76,38 @@ class Volume;
  */
 class Device
 {
+  public:
+    enum State
+    {
+        /*!
+         * Device was created because a volume for it was found.
+         *
+         * The device itself wasn't found yet, but could be found at some later
+         * point.
+         */
+        SYNTHETIC,
+
+        /*!
+         * Device was created because the kernel has added it to the system.
+         *
+         * Hardware connection not probed yet (not known if this is a USB
+         * device or something else).
+         */
+        UNCHECKED,
+
+        /*!
+         * Device is usable.
+         */
+        OK,
+
+        /*!
+         * Device is known, but not usable at all.
+         *
+         * Kept around for filtering.
+         */
+        BROKEN,
+    };
+
   private:
     /*!
      * Internal unique ID of this device.
@@ -104,18 +136,26 @@ class Device
     /*!
      * Whether or not this structure was created because a volume was found.
      *
-     * False if this device was created because the kernel has added the device
-     * to the system; true if this device was created because a volume for this
-     * device was found, but the device itself wasn't (yet).
+     * In case the state is #Devices::Device::SYNTHETIC, volumes belong to this
+     * device are not mounted because the device structure was generated from
+     * the volume information alone. When the device itself is found and added
+     * to the device manager, its state transitions to
+     * #Devices::Device::UNCHECKED.
      *
-     * In case this flag is true, all volumes in #Devices::Device::volumes_
-     * need to be processed (i.e., mounted) when the kernel adds the device.
+     * When handling the device in state #Devices::Device::UNCHECKED in the
+     * automounter, its properties are queried (such as USB hub ID) and the
+     * device is set to state #Devices::Device::OK.
+     *
+     * In case the state is #Devices::Device::OK, all volumes in
+     * #Devices::Device::volumes_ and new volumes found for this device need to
+     * be processed (i.e., mounted) while the kernel adds new devices.
+     *
      * This way we defer mounting of volumes until information about their
      * containing device are available. We need these information for
      * client-friendly D-Bus announcements (any volume is announced after its
      * containing device).
      */
-    bool is_pending_;
+    State state_;
 
     /*!
      * ID of the USB root hub ID as provided by the kernel.
@@ -131,29 +171,26 @@ class Device
     Device(const Device &) = delete;
     Device &operator=(const Device &) = delete;
 
-    explicit Device(ID device_id, const std::string &name):
+    explicit Device(ID device_id, const std::string &name, bool is_real):
         id_(device_id),
         name_(name),
-        is_pending_(true),
+        state_(is_real ? UNCHECKED : SYNTHETIC),
         root_hub_id_(0),
         hub_port_(0)
-    {}
-
-    explicit Device(ID device_id, const std::string &name,
-                    const std::string &mountpoint_container_path,
-                    const USBHubID &root_hub_id, unsigned int hub_port):
-        id_(device_id),
-        name_(name),
-        mountpoint_container_path_(mountpoint_container_path),
-        is_pending_(false),
-        root_hub_id_(root_hub_id),
-        hub_port_(hub_port)
     {}
 
     ~Device();
 
     const ID::value_type get_id() const { return id_.value_; }
     const std::string &get_name() const { return name_; }
+
+    State get_state() const { return state_; }
+
+    void set_is_real()
+    {
+        if(state_ == SYNTHETIC)
+            state_ = UNCHECKED;
+    }
 
     Volume *lookup_volume_by_devname(const char *devname) const;
     bool add_volume(Volume &volume);
@@ -236,6 +273,7 @@ class Volume
 
     const Device *get_device() const { return &containing_device_; }
     int get_index() const { return index_; }
+    State get_state() const { return state_; }
     const std::string &get_label() const { return label_; }
     const std::string &get_device_name() const { return devname_; }
 };

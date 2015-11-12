@@ -121,6 +121,7 @@ new_device_with_expectations(const DevNames &device_names,
 
     cppcut_assert_not_null(dev);
     cppcut_assert_equal(device_names.device_identifier, dev->get_name().c_str());
+    cppcut_assert_equal(Devices::Device::UNCHECKED, dev->get_state());
 
     if(expecting_null_volume)
         cppcut_assert_null(volume);
@@ -140,7 +141,8 @@ static void remove_device_with_expectations(const char *devlink)
 
 static const Devices::Volume *
 new_volume_with_expectations(int idx, const DevNames &volume_names,
-                             const Devices::Device *expected_device)
+                             const Devices::Device *expected_device,
+                             Devices::Device::State expected_device_state = Devices::Device::UNCHECKED)
 {
     const struct osdev_volume_info fake_info =
     {
@@ -158,6 +160,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     cppcut_assert_not_null(vol);
     cppcut_assert_equal(expected_device, vol->get_device());
     cppcut_assert_equal(volume_names.volume_label, vol->get_label().c_str());
+    cppcut_assert_equal(expected_device_state, vol->get_device()->get_state());
 
     cppcut_assert_equal(vol, expected_device->lookup_volume_by_devname(vol->get_device_name().c_str()));
 
@@ -190,6 +193,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     else
     {
         cppcut_assert_not_null(ret_device);
+        cppcut_assert_equal(Devices::Device::SYNTHETIC, ret_device->get_state());
         cppcut_assert_equal(ret_device, vol->get_device());
         cppcut_assert_equal(vol, ret_device->lookup_volume_by_devname(vol->get_device_name().c_str()));
     }
@@ -322,8 +326,8 @@ void test_new_volumes_with_late_full_device()
     /* three volumes on same device, but full device not seen yet */
     const Devices::Device *dev = nullptr;
     const Devices::Volume *vol1 = new_volume_with_expectations(1,   volume_names[0], dev, false);
-    const Devices::Volume *vol2 = new_volume_with_expectations(10,  volume_names[1], dev);
-    const Devices::Volume *vol3 = new_volume_with_expectations(100, volume_names[2], dev);
+    const Devices::Volume *vol2 = new_volume_with_expectations(10,  volume_names[1], dev, Devices::Device::SYNTHETIC);
+    const Devices::Volume *vol3 = new_volume_with_expectations(100, volume_names[2], dev, Devices::Device::SYNTHETIC);
 
     /* name was already guessed */
     cppcut_assert_equal(device_names.device_identifier, dev->get_name().c_str());

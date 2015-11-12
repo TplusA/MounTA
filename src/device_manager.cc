@@ -203,8 +203,13 @@ const Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
                 device = device_and_volume.first;
         }
     }
-    else if(device != nullptr && volume_number == 0 && volume != nullptr)
-        *volume = device->lookup_volume_by_devname(devname);
+    else if(device != nullptr && volume_number == 0)
+    {
+        device->set_is_real();
+
+        if(volume != nullptr)
+            *volume = device->lookup_volume_by_devname(devname);
+    }
 
     free(devname_mem);
 
@@ -301,8 +306,7 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
     return mk_device(devices_,
         [&devlink] (const Devices::ID &device_id)
         {
-            return new Devices::Device(device_id,
-                                       devlink, "/some/where", USBHubID(5), 10);
+            return new Devices::Device(device_id, devlink, true);
         });
 }
 
@@ -319,7 +323,8 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
             [&devlink] (const Devices::ID &device_id)
             {
                 return new Devices::Device(device_id,
-                                           mk_root_devlink_name(devlink));
+                                           mk_root_devlink_name(devlink),
+                                           false);
             });
     }
 
