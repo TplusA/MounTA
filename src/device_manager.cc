@@ -203,6 +203,8 @@ const Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
                 device = device_and_volume.first;
         }
     }
+    else if(device != nullptr && volume_number == 0 && volume != nullptr)
+        *volume = device->lookup_volume_by_devname(devname);
 
     free(devname_mem);
 

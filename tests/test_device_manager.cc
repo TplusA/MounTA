@@ -475,6 +475,44 @@ void test_devices_cannot_be_added_twice()
 }
 
 /*!\test
+ * In case a device containing a volume without a partition table is added
+ * twice, a diagnostic message is emitted, but no further resources are
+ * allocated.
+ */
+void test_devices_with_volume_on_whole_device_cannot_be_added_twice()
+{
+    static constexpr DevNames device_names("/dev/sdd", "usb-Duplicate_Disk_9310");
+    static constexpr struct osdev_volume_info fake_info =
+    {
+        .idx = -1,
+        .label = "Awesome Storage Device",
+        .fstype = "ext4",
+    };
+
+    const Devices::Volume *vol;
+    const auto *dev = new_device_with_expectations(device_names, &vol, false, false, &fake_info);
+
+    mock_messages->expect_msg_info_formatted("Device usb-Duplicate_Disk_9310 already registered");
+    const Devices::Volume *vol_again;
+    const auto *dev_again = new_device_with_expectations(device_names, &vol_again, false, true, nullptr);
+    cppcut_assert_equal(dev, dev_again);
+    cppcut_assert_equal(vol, vol_again);
+
+    cppcut_assert_equal(size_t(1), devs->get_number_of_devices());
+
+    auto dev_it(devs->begin());
+    cppcut_assert_equal(dev_it->second, dev);
+    ++dev_it;
+    cut_assert_true(dev_it == devs->end());
+
+    auto vol_it(dev->begin());
+    cppcut_assert_equal(vol_it->second, vol);
+    ++vol_it;
+    cut_assert_true(vol_it == dev->end());
+
+}
+
+/*!\test
  * In case a volume is added twice, a diagnostic message is emitted, but no
  * further resources are allocated.
  */
