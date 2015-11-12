@@ -302,7 +302,7 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
         [&devlink] (const Devices::ID &device_id)
         {
             return new Devices::Device(device_id,
-                                       devlink, "/some/where", 5, 10);
+                                       devlink, "/some/where", USBHubID(5), 10);
         });
 }
 

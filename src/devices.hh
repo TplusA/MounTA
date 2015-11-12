@@ -53,6 +53,22 @@ class ID
     }
 };
 
+/*!
+ * Micro class for improved type-safety and documentation.
+ *
+ * Avoids mixing up hub ID (passed through this class) and hub port (passed as
+ * regular \c int).
+ */
+class USBHubID
+{
+  private:
+    int id_;
+
+  public:
+    constexpr explicit USBHubID(unsigned int hub_id) noexcept: id_(hub_id) {}
+    constexpr int get() const noexcept { return id_; }
+};
+
 class Volume;
 
 /*!
@@ -104,7 +120,7 @@ class Device
     /*!
      * ID of the USB root hub ID as provided by the kernel.
      */
-    unsigned int root_hub_id_;
+    USBHubID root_hub_id_;
 
     /*!
      * USB port number as provided by the kernel.
@@ -125,7 +141,7 @@ class Device
 
     explicit Device(ID device_id, const std::string &name,
                     const std::string &mountpoint_container_path,
-                    unsigned int root_hub_id, unsigned int hub_port):
+                    const USBHubID &root_hub_id, unsigned int hub_port):
         id_(device_id),
         name_(name),
         mountpoint_container_path_(mountpoint_container_path),
