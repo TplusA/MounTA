@@ -34,7 +34,8 @@ Devices::Device::~Device()
     volumes_.clear();
 }
 
-bool Devices::Device::contains_volume(const char *devname) const
+Devices::Volume *
+Devices::Device::lookup_volume_by_devname(const char *devname) const
 {
     log_assert(devname != nullptr);
 
@@ -42,10 +43,10 @@ bool Devices::Device::contains_volume(const char *devname) const
         std::find_if(volumes_.begin(), volumes_.end(),
             [&devname] (const decltype(volumes_)::value_type &it) -> bool
             {
-                return strcmp(it.second->get_name().c_str(), devname) == 0;
+                return strcmp(it.second->get_device_name().c_str(), devname) == 0;
             });
 
-    return vol != volumes_.end();
+    return (vol != volumes_.end()) ? vol->second : nullptr;
 }
 
 bool Devices::Device::add_volume(Devices::Volume &volume)

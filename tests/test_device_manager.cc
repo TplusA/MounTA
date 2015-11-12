@@ -159,7 +159,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     cppcut_assert_equal(expected_device, vol->get_device());
     cppcut_assert_equal(volume_names.volume_label, vol->get_name().c_str());
 
-    cut_assert_true(expected_device->contains_volume(vol->get_name().c_str()));
+    cppcut_assert_equal(vol, expected_device->lookup_volume_by_devname(vol->get_device_name().c_str()));
 
     return vol;
 }
@@ -191,7 +191,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     {
         cppcut_assert_not_null(ret_device);
         cppcut_assert_equal(ret_device, vol->get_device());
-        cut_assert_true(ret_device->contains_volume(vol->get_name().c_str()));
+        cppcut_assert_equal(vol, ret_device->lookup_volume_by_devname(vol->get_device_name().c_str()));
     }
 
     return vol;

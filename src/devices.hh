@@ -139,7 +139,7 @@ class Device
     const ID::value_type get_id() const { return id_.value_; }
     const std::string &get_name() const { return name_; }
 
-    bool contains_volume(const char *devname) const;
+    Volume *lookup_volume_by_devname(const char *devname) const;
     bool add_volume(Volume &volume);
 
     decltype(volumes_)::const_iterator begin() const { return volumes_.begin(); };

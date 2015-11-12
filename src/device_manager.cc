@@ -324,7 +324,9 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
     if(device == nullptr)
         return std::pair<Devices::Device *, Devices::Volume *>(nullptr, nullptr);
 
-    if(device->contains_volume(devname))
+    auto *volume = device->lookup_volume_by_devname(devname);
+
+    if(volume != nullptr)
     {
         msg_info("Volume %s already registered on device %s",
                  devname, device->get_name().c_str());
@@ -335,7 +337,7 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
                          ? volinfo.label
                          : volinfo.fstype);
 
-    auto *volume = new Devices::Volume(*device, volinfo.idx, label, devname);
+    volume = new Devices::Volume(*device, volinfo.idx, label, devname);
 
     if(volume == nullptr)
         msg_out_of_memory("Volume object");
