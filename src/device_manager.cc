@@ -329,8 +329,8 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
     if(volume != nullptr)
     {
         msg_info("Volume %s already registered on device %s",
-                 devname, device->get_name().c_str());
-        return std::pair<Devices::Device *, Devices::Volume *>(device, nullptr);
+                 devlink, device->get_name().c_str());
+        return std::pair<Devices::Device *, Devices::Volume *>(device, volume);
     }
 
     const char *label = ((volinfo.label != nullptr && volinfo.label[0] != '\0')

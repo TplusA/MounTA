@@ -457,4 +457,36 @@ void test_remove_devices()
     check_device_iterator(nullptr, 0);
 }
 
+/*!\test
+ * In case a device is added twice, a diagnostic message is emitted, but no
+ * further resources are allocated.
+ */
+void test_devices_cannot_be_added_twice()
+{
+    static constexpr DevNames device_names("/dev/sdd", "usb-Duplicate_Disk_9310");
+
+    const auto *dev = new_device_with_expectations(device_names, nullptr, true);
+
+    mock_messages->expect_msg_info_formatted("Device usb-Duplicate_Disk_9310 already registered");
+    const auto *again = new_device_with_expectations(device_names, nullptr, true, true);
+    cppcut_assert_equal(dev, again);
+
+    cppcut_assert_equal(size_t(1), devs->get_number_of_devices());
+}
+
+/*!\test
+ * In case a volume is added twice, a diagnostic message is emitted, but no
+ * further resources are allocated.
+ */
+void test_volumes_cannot_be_added_twice()
+{
+    static constexpr DevNames volume_names("/dev/sdd1", "usb-Duplicate_9310-part1", "One", "btrfs");
+    const Devices::Device *dev = nullptr;
+    const Devices::Volume *vol = new_volume_with_expectations(1, volume_names, dev, false);
+
+    mock_messages->expect_msg_info_formatted("Volume usb-Duplicate_9310-part1 already registered on device usb-Duplicate_9310");
+    const Devices::Volume *again = new_volume_with_expectations(1, volume_names, dev, false);
+    cppcut_assert_equal(vol, again);
+}
+
 }
