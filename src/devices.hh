@@ -37,7 +37,7 @@ class ID
     const value_type value_;
 
   private:
-    static constexpr value_type max_id_ = 1000;
+    static constexpr value_type max_id_ = 999;
     static value_type next_free_id_;
 
   public:
