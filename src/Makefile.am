@@ -22,7 +22,7 @@ bin_PROGRAMS = mounta
 
 mounta_SOURCES = \
     mounta.cc messages.h messages.c \
-    devices.hh device_manager.hh \
+    devices.hh devices_util.h device_manager.hh \
     devices_os.h devices_os.c \
     fdevents.hh fdevents.cc \
     dbus_iface.c dbus_iface.h dbus_iface_deep.h \
@@ -47,7 +47,8 @@ libmounta_dbus_la_CFLAGS = $(CRELAXEDWARNINGS)
 
 libdevice_manager_la_SOURCES = \
     device_manager.hh device_manager.cc \
-    devices.hh devices.cc
+    devices.hh devices.cc \
+    devices_util.h devices_util.c
 libdevice_manager_la_CFLAGS = $(AM_CFLAGS)
 libdevice_manager_la_CXXFLAGS = $(AM_CXXFLAGS)
 

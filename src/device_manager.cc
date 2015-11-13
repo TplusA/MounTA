@@ -21,12 +21,12 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <cstring>
-#include <climits>
 #include <functional>
 #include <algorithm>
 #include <type_traits>
 
 #include "device_manager.hh"
+#include "devices_util.h"
 #include "devices_os.h"
 #include "messages.h"
 
@@ -39,65 +39,6 @@ Devices::AllDevices::~AllDevices()
 }
 
 Devices::ID::value_type Devices::ID::next_free_id_;
-
-static const char *find_trailing_number(const char *devname)
-{
-    const char *p;
-
-    for(p = devname + strlen(devname) - 1; p > devname; --p)
-    {
-        if(!isdigit(*p))
-        {
-            ++p;
-            break;
-        }
-    }
-
-    return (*p != '\0') ? p : nullptr;
-}
-
-/*!
- * Parse volume number for block device name.
- *
- * \param devname
- *     A device name such as `/dev/sda`, `/dev/sdb5`, or `/dev/sdx123`.
- *
- * \returns
- *     The volume number, or -1 if the number could not be parsed. Note that 0
- *     will be returned in case the device name does not end with a number.
- *     Number -1 is only returned for names that start with a digit, end with a
- *     number that causes an integer overflow, or on internal fault.
- */
-static int devname_get_volume_number(const char *devname)
-{
-    log_assert(devname != nullptr);
-    log_assert(devname[0] != '\0');
-
-    if(isdigit(devname[0]))
-    {
-        msg_error(EINVAL, LOG_NOTICE, "Invalid device name: \"%s\"", devname);
-        return -1;
-    }
-
-    const char *const start_of_number = find_trailing_number(devname);
-
-    if(start_of_number == nullptr)
-        return 0;
-
-    char *endptr;
-    const unsigned long temp = strtoul(start_of_number, &endptr, 10);
-
-    if(*endptr == '\0')
-        return temp;
-
-    if(temp > INT_MAX || (temp == ULONG_MAX && errno == ERANGE))
-        msg_error(ERANGE, LOG_NOTICE,
-                  "Number in device name out of range: \"%s\"", devname);
-    else
-        BUG("Failed parsing validated number");
-
-    return -1;
-}
 
 static bool is_link_to_partition(const char *devlink_hyphen)
 {
