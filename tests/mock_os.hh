@@ -39,7 +39,14 @@ class MockOs
     void check() const;
 
     void expect_os_abort(void);
+    void expect_os_system(int retval, const char *command);
+    void expect_os_system_formatted(int retval, const char *string);
+    void expect_os_system_formatted_formatted(int retval, const char *string);
+    void expect_os_foreach_in_path(bool retval, const char *path);
     void expect_os_resolve_symlink(const char *retval, const char *link);
+    void expect_os_mkdir_hierarchy(bool retval, const char *path, bool must_not_exist);
+    void expect_os_mkdir(bool retval, const char *path, bool must_not_exist);
+    void expect_os_rmdir(bool retval, const char *path, bool must_exist);
 };
 
 extern MockOs *mock_os_singleton;

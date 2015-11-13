@@ -19,6 +19,7 @@
 #ifndef OS_H
 #define OS_H
 
+#include <stdbool.h>
 #include <unistd.h>
 
 #ifdef __cplusplus
@@ -26,6 +27,14 @@ extern "C" {
 #endif
 
 void os_abort(void);
+
+int os_system(const char *command);
+int os_system_formatted(const char *format_string, ...)
+    __attribute__ ((format (printf, 1, 2)));
+
+bool os_foreach_in_path(const char *path,
+                        void (*callback)(const char *path, void *user_data),
+                        void *user_data);
 
 /*!
  * Read destination of symlink, if any.
@@ -36,6 +45,10 @@ void os_abort(void);
  *     the OS.
  */
 char *os_resolve_symlink(const char *link);
+
+bool os_mkdir_hierarchy(const char *path, bool must_not_exist);
+bool os_mkdir(const char *path, bool must_not_exist);
+bool os_rmdir(const char *path, bool must_exist);
 
 #ifdef __cplusplus
 }
