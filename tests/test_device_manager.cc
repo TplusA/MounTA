@@ -120,7 +120,7 @@ new_device_with_expectations(const DevNames &device_names,
     const Devices::Device *const dev = devs->new_entry(device_names.device_identifier, &volume);
 
     cppcut_assert_not_null(dev);
-    cppcut_assert_equal(device_names.device_identifier, dev->get_name().c_str());
+    cppcut_assert_equal(device_names.device_identifier, dev->get_devlink_name().c_str());
     cppcut_assert_equal(Devices::Device::UNCHECKED, dev->get_state());
 
     if(expecting_null_volume)
@@ -227,7 +227,7 @@ void test_new_device_with_volumes()
     for(const auto &it : *devs)
     {
         cppcut_assert_operator(size_t(1), >, i);
-        cppcut_assert_equal(device_names.device_identifier, it.second->get_name().c_str());
+        cppcut_assert_equal(device_names.device_identifier, it.second->get_devlink_name().c_str());
         ++i;
     }
 
@@ -274,7 +274,7 @@ void test_new_device_with_volume_on_whole_disk()
                                               fake_info.fstype);
 
     cppcut_assert_equal(expected_volume.block_device_name, vol->get_device_name().c_str());
-    cppcut_assert_equal(expected_volume.device_identifier, vol->get_device()->get_name().c_str());
+    cppcut_assert_equal(expected_volume.device_identifier, vol->get_device()->get_devlink_name().c_str());
     cppcut_assert_equal(expected_volume.volume_label, vol->get_label().c_str());
     cppcut_assert_equal(-1, vol->get_index());
 }
@@ -300,7 +300,7 @@ void test_new_devices_without_volumes()
     for(const auto &dev : *devs)
     {
         cppcut_assert_operator(device_names.size(), >, i);
-        cppcut_assert_equal(device_names[i].device_identifier, dev.second->get_name().c_str());
+        cppcut_assert_equal(device_names[i].device_identifier, dev.second->get_devlink_name().c_str());
         cut_assert_true(dev.second->begin() == dev.second->end());
         ++i;
     }
@@ -330,14 +330,14 @@ void test_new_volumes_with_late_full_device()
     const Devices::Volume *vol3 = new_volume_with_expectations(100, volume_names[2], dev, Devices::Device::SYNTHETIC);
 
     /* name was already guessed */
-    cppcut_assert_equal(device_names.device_identifier, dev->get_name().c_str());
+    cppcut_assert_equal(device_names.device_identifier, dev->get_devlink_name().c_str());
 
     /* found full device: existing structure is used, no volume is returned */
     mock_messages->expect_msg_info_formatted("Device usb-Disk_864216 already registered");
     cppcut_assert_equal(dev, new_device_with_expectations(device_names, nullptr, true, true));
 
     cppcut_assert_equal(dev, vol1->get_device());
-    cppcut_assert_equal(device_names.device_identifier, dev->get_name().c_str());
+    cppcut_assert_equal(device_names.device_identifier, dev->get_devlink_name().c_str());
 
     /* found yet another partition on that strange device */
     const Devices::Volume *vol4 = new_volume_with_expectations(2, volume_names[3], dev);
@@ -368,7 +368,7 @@ static void check_device_iterator(const DevNames *const device_names,
         for(const auto &it : *devs)
         {
             cppcut_assert_operator(number_of_device_names, >, i);
-            cppcut_assert_equal(device_names[i].device_identifier, it.second->get_name().c_str());
+            cppcut_assert_equal(device_names[i].device_identifier, it.second->get_devlink_name().c_str());
             ++i;
         }
 

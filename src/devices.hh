@@ -115,13 +115,18 @@ class Device
     const ID id_;
 
     /*!
+     * Original name of the symlink pointing to the block device.
+     */
+    std::string devlink_name_;
+
+    /*!
      * Human-readable name of the device as extracted from the device.
      *
      * Note that this is not the name of the block device as maintained by the
      * kernel, but a string that is queried from the device itself. This could
      * be some string from a USB descriptor or from ATA information.
      */
-    std::string name_;
+    std::string display_name_;
 
     /*!
      * Where the mountpoints for this device will be created.
@@ -171,9 +176,10 @@ class Device
     Device(const Device &) = delete;
     Device &operator=(const Device &) = delete;
 
-    explicit Device(ID device_id, const std::string &name, bool is_real):
+    explicit Device(ID device_id, const std::string &devlink, bool is_real):
         id_(device_id),
-        name_(name),
+        devlink_name_(devlink),
+        display_name_("<BUG: name no extracted yet>"),
         state_(is_real ? UNCHECKED : SYNTHETIC),
         root_hub_id_(0),
         hub_port_(0)
@@ -182,7 +188,8 @@ class Device
     ~Device();
 
     const ID::value_type get_id() const { return id_.value_; }
-    const std::string &get_name() const { return name_; }
+    const std::string &get_devlink_name() const { return devlink_name_; }
+    const std::string &get_display_name() const { return display_name_; }
 
     State get_state() const { return state_; }
 
