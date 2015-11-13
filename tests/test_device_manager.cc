@@ -424,16 +424,16 @@ void test_remove_devices()
 
     static constexpr std::array<const DevNames, 2> volume_names_sdm =
     {
-        DevNames("/dev/sdn1", "usb-Device_D_0BC7-part1", "Pn1", "fsn1"),
-        DevNames("/dev/sdn2", "usb-Device_D_0BC7-part2", "Pn2", "fsn2"),
+        DevNames("/dev/sdm1", "usb-Device_D_0BC7-part1", "Pm1", "fsm1"),
+        DevNames("/dev/sdm2", "usb-Device_D_0BC7-part2", "Pm2", "fsm2"),
     };
 
     static constexpr std::array<const DevNames, 4> volume_names_sdn =
     {
-        DevNames("/dev/sdn1", "usb-Device_E_0815-part1", "Pm1", "fsn1"),
-        DevNames("/dev/sdn2", "usb-Device_E_0815-part2", "Pm2", "fsn2"),
-        DevNames("/dev/sdn3", "usb-Device_E_0815-part3", "Pm3", "fsn3"),
-        DevNames("/dev/sdn4", "usb-Device_E_0815-part4", "Pm4", "fsn4"),
+        DevNames("/dev/sdn1", "usb-Device_E_0815-part1", "Pn1", "fsn1"),
+        DevNames("/dev/sdn2", "usb-Device_E_0815-part2", "Pn2", "fsn2"),
+        DevNames("/dev/sdn3", "usb-Device_E_0815-part3", "Pn3", "fsn3"),
+        DevNames("/dev/sdn4", "usb-Device_E_0815-part4", "Pn4", "fsn4"),
     };
 
     const auto *dev_sdm = new_device_with_expectations(device_names[0], nullptr, true);
