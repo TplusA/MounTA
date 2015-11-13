@@ -40,6 +40,37 @@ Devices::AllDevices::~AllDevices()
 
 Devices::ID::value_type Devices::ID::next_free_id_;
 
+struct DevnameWithVolumeNumber
+{
+    char *devname_mem_;
+    const char *devname_;
+    int volume_number_;
+
+    constexpr explicit DevnameWithVolumeNumber():
+        devname_mem_(nullptr),
+        devname_(nullptr),
+        volume_number_(-1)
+    {}
+
+    ~DevnameWithVolumeNumber()
+    {
+        free(devname_mem_);
+    }
+};
+
+/*!
+ * Get device name and volume number from device link.
+ */
+static bool get_devname_with_volume_number(DevnameWithVolumeNumber *data,
+                                           const char *devlink)
+{
+    data->devname_mem_ = os_resolve_symlink(devlink);
+    data->devname_ = (data->devname_mem_ != nullptr) ? data->devname_mem_ : devlink;
+    data->volume_number_ = devname_get_volume_number(data->devname_);
+
+    return data->volume_number_ >= 0;
+}
+
 static bool is_link_to_partition(const char *devlink_hyphen)
 {
     if(devlink_hyphen == nullptr)
@@ -106,33 +137,26 @@ const Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
     if(volume != nullptr)
         *volume = nullptr;
 
-    char *devname_mem = os_resolve_symlink(devlink);
-    const char *devname = (devname_mem != nullptr) ? devname_mem : devlink;
-
-    const int volume_number = devname_get_volume_number(devname);
-
-    if(volume_number < 0)
-    {
-        free(devname_mem);
+    DevnameWithVolumeNumber data;
+    if(!get_devname_with_volume_number(&data, devlink))
         return nullptr;
-    }
 
     struct osdev_volume_info volinfo;
     bool have_volume_info = false;
 
     Device *device =
-        (volume_number == 0)
-        ? add_or_get_device(devlink, devname, volinfo, have_volume_info)
+        (data.volume_number_ == 0)
+        ? add_or_get_device(devlink, data.devname_, volinfo, have_volume_info)
         : find_root_device(devlink);
 
-    if(volume_number > 0 || have_volume_info)
+    if(data.volume_number_ > 0 || have_volume_info)
     {
         if(!have_volume_info)
-            have_volume_info = osdev_get_volume_information(devname, &volinfo);
+            have_volume_info = osdev_get_volume_information(data.devname_, &volinfo);
 
         if(have_volume_info)
         {
-            auto device_and_volume = add_or_get_volume(device, devlink, devname, volinfo);
+            auto device_and_volume = add_or_get_volume(device, devlink, data.devname_, volinfo);
 
             log_assert(device_and_volume.first == device ||
                        (device == nullptr && device_and_volume.first != nullptr));
@@ -144,15 +168,13 @@ const Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
                 device = device_and_volume.first;
         }
     }
-    else if(device != nullptr && volume_number == 0)
+    else if(device != nullptr && data.volume_number_ == 0)
     {
         device->set_is_real();
 
         if(volume != nullptr)
-            *volume = device->lookup_volume_by_devname(devname);
+            *volume = device->lookup_volume_by_devname(data.devname_);
     }
-
-    free(devname_mem);
 
     if(have_volume_info)
         osdev_free_volume_information(&volinfo);
