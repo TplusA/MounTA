@@ -138,3 +138,7 @@ void dbus_shutdown(GMainLoop *loop)
     g_object_unref(dbus_data.mounta_iface);
 }
 
+tdbusMounTA *dbus_get_mounta_iface(void)
+{
+    return dbus_data.mounta_iface;
+}
