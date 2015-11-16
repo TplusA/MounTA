@@ -19,6 +19,8 @@
 #ifndef DEVICE_MANAGER_HH
 #define DEVICE_MANAGER_HH
 
+#include <functional>
+
 #include "devices.hh"
 #include "devices_os.h"
 
@@ -48,7 +50,17 @@ class AllDevices
     ~AllDevices();
 
     const Device *new_entry(const char *devlink, const Volume **volume);
-    bool remove_entry(const char *devlink);
+
+    using RemoveDeviceCallback = std::function<void(Devices::Device &)>;
+    using RemoveVolumeCallback = std::function<void(Devices::Volume &)>;
+
+    bool remove_entry(const char *devlink,
+                      const RemoveDeviceCallback &remove_device,
+                      const RemoveVolumeCallback &remove_volume);
+
+    bool remove_entry(decltype(devices_)::const_iterator devices_iter,
+                      const RemoveDeviceCallback &remove_device,
+                      const RemoveVolumeCallback &remove_volume);
 
     decltype(devices_)::const_iterator begin() const { return devices_.begin(); };
     decltype(devices_)::const_iterator end() const   { return devices_.end(); };

@@ -153,9 +153,33 @@ new_device_with_expectations(const DevNames &device_names,
     return dev;
 }
 
-static void remove_device_with_expectations(const char *devlink)
+template <size_t N>
+static void remove_device_with_expectations(const char *devlink,
+                                            const std::array<const DevNames, N> &expected_volumes)
 {
-    cut_assert_true(devs->remove_entry(devlink));
+    remove_device_with_expectations(devlink, expected_volumes.data(), N);
+}
+
+static void remove_device_with_expectations(const char *devlink,
+                                            const DevNames *expected_volumes,
+                                            size_t expected_volumes_count)
+{
+    size_t volumes_seen = 0;
+    bool removed = false;
+
+    const bool ret = devs->remove_entry(devlink,
+        [&removed] (Devices::Device &dev) { removed = true; },
+        [&]        (Devices::Volume &vol)
+        {
+            cppcut_assert_operator(expected_volumes_count, >, volumes_seen);
+            cppcut_assert_equal(expected_volumes[volumes_seen].block_device_name,
+                                vol.get_device_name().c_str());
+            ++volumes_seen;
+        });
+
+    cppcut_assert_equal(expected_volumes_count, volumes_seen);
+    cut_assert_true(ret);
+    cut_assert_true(removed);
 }
 
 static const Devices::Volume *
@@ -414,17 +438,17 @@ void test_remove_devices_without_volumes()
     cppcut_assert_equal(device_names.size(), devs->get_number_of_devices());
     check_device_iterator(device_names.data(), device_names.size());
 
-    remove_device_with_expectations(device_names[2].device_identifier);
+    remove_device_with_expectations(device_names[2].device_identifier, nullptr, 0);
 
     cppcut_assert_equal(device_names.size() - 1U, devs->get_number_of_devices());
     check_device_iterator(device_names.data(), device_names.size() - 1U);
 
-    remove_device_with_expectations(device_names[1].device_identifier);
+    remove_device_with_expectations(device_names[1].device_identifier, nullptr, 0);
 
     cppcut_assert_equal(device_names.size() - 2U, devs->get_number_of_devices());
     check_device_iterator(device_names.data(), device_names.size() - 2U);
 
-    remove_device_with_expectations(device_names[0].device_identifier);
+    remove_device_with_expectations(device_names[0].device_identifier, nullptr, 0);
 
     cppcut_assert_equal(size_t(0), devs->get_number_of_devices());
     check_device_iterator(nullptr, 0);
@@ -469,12 +493,12 @@ void test_remove_devices()
     cppcut_assert_equal(device_names.size(), devs->get_number_of_devices());
     check_device_iterator(device_names.data(), device_names.size());
 
-    remove_device_with_expectations(device_names[1].device_identifier);
+    remove_device_with_expectations(device_names[1].device_identifier, volume_names_sdn);
 
     cppcut_assert_equal(device_names.size() - 1U, devs->get_number_of_devices());
     check_device_iterator(device_names.data(), device_names.size() - 1U);
 
-    remove_device_with_expectations(device_names[0].device_identifier);
+    remove_device_with_expectations(device_names[0].device_identifier, volume_names_sdm);
 
     cppcut_assert_equal(size_t(0), devs->get_number_of_devices());
     check_device_iterator(nullptr, 0);

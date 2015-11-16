@@ -182,22 +182,57 @@ const Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
     return device;
 }
 
-bool Devices::AllDevices::remove_entry(const char *devlink)
+bool Devices::AllDevices::remove_entry(const char *devlink,
+                                       const Devices::AllDevices::RemoveDeviceCallback &remove_device,
+                                       const Devices::AllDevices::RemoveVolumeCallback &remove_volume)
 {
     log_assert(devlink != nullptr);
 
-    auto dev_it = get_device_iter_by_devlink(devices_, devlink);
-    if(dev_it == devices_.end())
+    return remove_entry(get_device_iter_by_devlink(devices_, devlink),
+                        remove_device, remove_volume);
+}
+
+bool Devices::AllDevices::remove_entry(decltype(devices_)::const_iterator devices_iter,
+                                       const Devices::AllDevices::RemoveDeviceCallback &remove_device,
+                                       const Devices::AllDevices::RemoveVolumeCallback &remove_volume)
+{
+    if(devices_iter == devices_.end())
     {
-        msg_error(EINVAL, LOG_NOTICE,
-                  "Cannot remove non-existent device \"%s\"", devlink);
-        BUG("Requested to remove non-existent entry");
+        /*!
+         * BUG: Could leak mountpoint directories here.
+         *
+         * Situation:
+         *     Assume there is a block device named ADev mounted to ADir, maybe
+         *     even mounted there by us. Then our daemon dies for some reason
+         *     (crash, killed by package manager, whatever). On startup, we try
+         *     to unmount all mounts in our working directory, but this may
+         *     fail if some process has a file open in ADir. Later still,
+         *     device ADev may get pulled by the user, so we'll see an unplug
+         *     event for a device we don't know at this exact point in code.
+         *     Directory ADir will be left around in this case.
+         *
+         * We should try to find a directory that matches the device name, make
+         * sure the directory is not associated with some volume object and
+         * that nothing is mounted there, then remove it.
+         */
         return false;
     }
 
-    Devices::Device *device = dev_it->second;
+    Devices::Device *device = devices_iter->second;
 
-    devices_.erase(dev_it);
+    if(remove_volume != nullptr)
+    {
+        for(auto &vol_it : *device)
+        {
+            log_assert(vol_it.second != nullptr);
+            remove_volume(*vol_it.second);
+        }
+    }
+
+    if(remove_device != nullptr)
+        remove_device(*device);
+
+    devices_.erase(devices_iter);
 
     log_assert(device != nullptr);
     delete device;
