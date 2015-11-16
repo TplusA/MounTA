@@ -45,11 +45,17 @@ class AllDevices
   public:
     AllDevices(const AllDevices &) = delete;
     AllDevices &operator=(const AllDevices &) = delete;
+    AllDevices(AllDevices &&) = default;
 
     explicit AllDevices() {}
     ~AllDevices();
 
-    const Device *new_entry(const char *devlink, const Volume **volume);
+    Device *new_entry(const char *devlink, Volume **volume);
+
+    const Device *new_entry(const char *devlink, const Volume **volume)
+    {
+        return new_entry(devlink, const_cast<Devices::Volume **>(volume));
+    }
 
     using RemoveDeviceCallback = std::function<void(Devices::Device &)>;
     using RemoveVolumeCallback = std::function<void(Devices::Volume &)>;

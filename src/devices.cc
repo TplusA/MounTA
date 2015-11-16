@@ -33,6 +33,8 @@ Devices::Device::~Device()
         delete vol.second;
 
     volumes_.clear();
+
+    cleanup_fs(false);
 }
 
 Devices::Volume *
@@ -58,6 +60,16 @@ bool Devices::Device::add_volume(Devices::Volume &volume)
         BUG("Insertion of volume failed");
 
     return result.second;
+}
+
+void Devices::Device::set_working_directory(const std::string &path)
+{
+    if(!mountpoint_container_path_.empty())
+        BUG("Overwriting device mountpoint container");
+
+    log_assert(state_ == OK);
+
+    mountpoint_container_path_ = path;
 }
 
 void Devices::Device::probe()
@@ -96,4 +108,58 @@ void Devices::Device::do_probe()
     }
 
     osdev_free_device_information(&devinfo);
+}
+
+static void do_remove_mountpoint_directory(const char *path, void *user_data)
+{
+    (void)os_rmdir(path, *static_cast<bool *>(user_data));
+}
+
+void Devices::Device::cleanup_fs(bool not_expecting_failure)
+{
+    if(mountpoint_container_path_.empty())
+        return;
+
+    os_foreach_in_path(mountpoint_container_path_.c_str(),
+                       do_remove_mountpoint_directory, &not_expecting_failure);
+    (void)os_rmdir(mountpoint_container_path_.c_str(), not_expecting_failure);
+
+    mountpoint_container_path_.clear();
+}
+
+void Devices::Volume::set_mounted(const std::string &path)
+{
+    if(!mountpoint_path_.empty())
+        BUG("Overwriting volume mountpoint path");
+
+    log_assert(state_ == PENDING);
+
+    mountpoint_path_ = path;
+    state_ = MOUNTED;
+}
+
+void Devices::Volume::set_removed()
+{
+    log_assert(state_ == MOUNTED || state_ == REJECTED);
+
+    set_eol_state_and_cleanup(REMOVED, true);
+}
+
+void Devices::Volume::set_unusable()
+{
+    log_assert(state_ == PENDING);
+
+    set_eol_state_and_cleanup(UNUSABLE, true);
+}
+
+void Devices::Volume::set_eol_state_and_cleanup(State state,
+                                                bool not_expecting_failure)
+{
+    state_ = state;
+
+    if(!mountpoint_path_.empty())
+    {
+        (void)os_rmdir(mountpoint_path_.c_str(), not_expecting_failure);
+        mountpoint_path_.clear();
+    }
 }

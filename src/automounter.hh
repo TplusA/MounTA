@@ -21,6 +21,8 @@
 
 #include <string>
 
+#include "device_manager.hh"
+
 namespace Automounter
 {
 
@@ -65,6 +67,7 @@ class Core
   private:
     const std::string working_directory_;
     const ExternalTools &tools_;
+    Devices::AllDevices devman_;
 
   public:
     Core(const Core &) = delete;

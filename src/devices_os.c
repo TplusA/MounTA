@@ -20,7 +20,11 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "devices_os.h"
+#include "devices_util.h"
 #include "messages.h"
 
 bool osdev_get_device_information(const char *devlink, struct osdev_device_info *devinfo)
@@ -53,13 +57,28 @@ bool osdev_get_volume_information(const char *devname, struct osdev_volume_info 
     log_assert(devname != NULL);
     log_assert(info != NULL);
 
-    BUG("osdev_get_volume_information() not implemented");
-    return false;
+    const int idx = devname_get_volume_number(devname);
+
+    if(idx < 0)
+        return false;
+
+    /* FIXME: This should rely on the outcome of \c blkid.
+     *        Fail if there is no volume. */
+    if(idx == 0)
+        return false;
+
+    info->idx = (idx > 0) ? idx : -1;
+    info->label = strdup("<BUG: get label not implemented yet>");
+    info->fstype = strdup("<BUG: get fstype not implemented yet>");
+
+    return true;
 }
 
 void osdev_free_volume_information(struct osdev_volume_info *info)
 {
     log_assert(info != NULL);
 
-    BUG("osdev_get_volume_information() not implemented");
+    free((void *)info->label);
+    free((void *)info->fstype);
+    memset(info, 0, sizeof(*info));
 }

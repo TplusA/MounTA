@@ -225,11 +225,15 @@ class Device
     Volume *lookup_volume_by_devname(const char *devname) const;
     bool add_volume(Volume &volume);
 
+    const std::string &get_working_directory() const { return mountpoint_container_path_; }
+    void set_working_directory(const std::string &path);
+
     decltype(volumes_)::const_iterator begin() const { return volumes_.begin(); };
     decltype(volumes_)::const_iterator end() const   { return volumes_.end(); };
 
   private:
     void do_probe();
+    void cleanup_fs(bool not_expecting_failure);
 };
 
 /*!
@@ -305,6 +309,11 @@ class Volume
         devname_(devname)
     {}
 
+    ~Volume()
+    {
+        set_eol_state_and_cleanup(UNUSABLE, false);
+    }
+
     const Device *get_device() const { return &containing_device_; }
     int get_index() const { return index_; }
     State get_state() const { return state_; }
@@ -312,6 +321,20 @@ class Volume
     const std::string &get_device_name() const { return devname_; }
 
     void reject() { state_ = REJECTED; }
+
+    void set_device_working_dir(const std::string &path) const
+    {
+        containing_device_.set_working_directory(path);
+    }
+
+    const std::string &get_mountpoint() const { return mountpoint_path_; }
+
+    void set_mounted(const std::string &path);
+    void set_removed();
+    void set_unusable();
+
+  private:
+    void set_eol_state_and_cleanup(State state, bool not_expecting_failure);
 };
 
 }

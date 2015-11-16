@@ -129,8 +129,8 @@ Devices::Device *Devices::AllDevices::find_root_device(const char *devlink)
     return (dev != devices_.end()) ? dev->second : nullptr;
 }
 
-const Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
-                                                      const Devices::Volume **volume)
+Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
+                                                Devices::Volume **volume)
 {
     log_assert(devlink != nullptr);
 
