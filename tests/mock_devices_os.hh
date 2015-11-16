@@ -38,6 +38,8 @@ class MockDevicesOs
     void init();
     void check() const;
 
+    void expect_osdev_get_device_information(const char *devlink, const struct osdev_device_info *info = nullptr);
+    void expect_osdev_free_device_information(const struct osdev_device_info *info);
     void expect_osdev_get_volume_information(const char *devname, const struct osdev_volume_info *info = nullptr);
     void expect_osdev_free_volume_information(const struct osdev_volume_info *info);
 };

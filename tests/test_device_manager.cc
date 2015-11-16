@@ -99,29 +99,48 @@ void cut_teardown(void)
     mock_devices_os = nullptr;
 }
 
+static void add_device_probe_expectations(const char *name,
+                                          const struct osdev_device_info *info)
+{
+    mock_devices_os->expect_osdev_get_device_information(name, info);
+    mock_devices_os->expect_osdev_free_device_information(info);
+}
+
 static const Devices::Device *
 new_device_with_expectations(const DevNames &device_names,
                              const Devices::Volume **ret_volume,
                              bool expecting_null_volume,
                              bool device_exists_already = false,
-                             const struct osdev_volume_info *fake_info = nullptr)
+                             const struct osdev_volume_info *fake_info = nullptr,
+                             bool expecting_device_probe = true)
 {
+    static const struct osdev_device_info fake_device_info =
+    {
+        .type = OSDEV_DEVICE_TYPE_USB,
+        .usb = { .hub_id = 4, .port = 2, },
+    };
+
     mock_os->expect_os_resolve_symlink(device_names.block_device_name, device_names.device_identifier);
 
     if(!device_exists_already)
     {
         mock_devices_os->expect_osdev_get_volume_information(device_names.block_device_name, fake_info);
 
+        if(expecting_device_probe)
+            add_device_probe_expectations(device_names.device_identifier, &fake_device_info);
+
         if(fake_info != nullptr)
             mock_devices_os->expect_osdev_free_volume_information(fake_info);
     }
+    else if(expecting_device_probe)
+        add_device_probe_expectations(device_names.device_identifier, &fake_device_info);
 
     const Devices::Volume *volume;
     const Devices::Device *const dev = devs->new_entry(device_names.device_identifier, &volume);
 
     cppcut_assert_not_null(dev);
     cppcut_assert_equal(device_names.device_identifier, dev->get_devlink_name().c_str());
-    cppcut_assert_equal(Devices::Device::UNCHECKED, dev->get_state());
+    cppcut_assert_equal(Devices::Device::PROBED, dev->get_state());
 
     if(expecting_null_volume)
         cppcut_assert_null(volume);
@@ -142,7 +161,7 @@ static void remove_device_with_expectations(const char *devlink)
 static const Devices::Volume *
 new_volume_with_expectations(int idx, const DevNames &volume_names,
                              const Devices::Device *expected_device,
-                             Devices::Device::State expected_device_state = Devices::Device::UNCHECKED)
+                             Devices::Device::State expected_device_state = Devices::Device::PROBED)
 {
     const struct osdev_volume_info fake_info =
     {
@@ -472,7 +491,7 @@ void test_devices_cannot_be_added_twice()
     const auto *dev = new_device_with_expectations(device_names, nullptr, true);
 
     mock_messages->expect_msg_info_formatted("Device usb-Duplicate_Disk_9310 already registered");
-    const auto *again = new_device_with_expectations(device_names, nullptr, true, true);
+    const auto *again = new_device_with_expectations(device_names, nullptr, true, true, nullptr, false);
     cppcut_assert_equal(dev, again);
 
     cppcut_assert_equal(size_t(1), devs->get_number_of_devices());
@@ -498,7 +517,7 @@ void test_devices_with_volume_on_whole_device_cannot_be_added_twice()
 
     mock_messages->expect_msg_info_formatted("Device usb-Duplicate_Disk_9310 already registered");
     const Devices::Volume *vol_again;
-    const auto *dev_again = new_device_with_expectations(device_names, &vol_again, false, true, nullptr);
+    const auto *dev_again = new_device_with_expectations(device_names, &vol_again, false, true, nullptr, false);
     cppcut_assert_equal(dev, dev_again);
     cppcut_assert_equal(vol, vol_again);
 

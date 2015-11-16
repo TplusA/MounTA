@@ -23,6 +23,31 @@
 #include "devices_os.h"
 #include "messages.h"
 
+bool osdev_get_device_information(const char *devlink, struct osdev_device_info *devinfo)
+{
+    log_assert(devlink != NULL);
+    log_assert(devinfo != NULL);
+
+    /* FIXME: These are fake information. */
+    devinfo->type = OSDEV_DEVICE_TYPE_USB;
+    devinfo->usb.hub_id = 25;
+    devinfo->usb.port = 3;
+
+    return true;
+}
+
+void osdev_free_device_information(struct osdev_device_info *devinfo)
+{
+    log_assert(devinfo != NULL);
+
+    /*
+     * Nothing to do at the moment.
+     *
+     * We just make sure that this function gets called to avoid leaks
+     * introduced by future extensions.
+     */
+}
+
 bool osdev_get_volume_information(const char *devname, struct osdev_volume_info *info)
 {
     log_assert(devname != NULL);

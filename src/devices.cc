@@ -24,6 +24,7 @@
 #include <cstring>
 
 #include "devices.hh"
+#include "devices_os.h"
 #include "messages.h"
 
 Devices::Device::~Device()
@@ -57,4 +58,42 @@ bool Devices::Device::add_volume(Devices::Volume &volume)
         BUG("Insertion of volume failed");
 
     return result.second;
+}
+
+void Devices::Device::probe()
+{
+    if(state_ == SYNTHETIC)
+        return do_probe();
+}
+
+void Devices::Device::do_probe()
+{
+    log_assert(state_ == SYNTHETIC);
+
+    struct osdev_device_info devinfo;
+
+    const char *name = strrchr(devlink_name_.c_str(), '/');
+    device_name_ = (name != nullptr) ? (name + 1) : devlink_name_.c_str();
+
+    if(device_name_.empty() ||
+       !osdev_get_device_information(devlink_name_.c_str(), &devinfo))
+    {
+        state_ = BROKEN;
+        return;
+    }
+
+    switch(devinfo.type)
+    {
+      case OSDEV_DEVICE_TYPE_UNKNOWN:
+        state_ = BROKEN;
+        break;
+
+      case OSDEV_DEVICE_TYPE_USB:
+        root_hub_id_ = Devices::USBHubID(devinfo.usb.hub_id);
+        hub_port_ = devinfo.usb.port;
+        state_ = PROBED;
+        break;
+    }
+
+    osdev_free_device_information(&devinfo);
 }

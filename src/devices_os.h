@@ -30,8 +30,13 @@ enum osdev_device_type
 struct osdev_device_info
 {
     enum osdev_device_type type;
-    const char *devname;
-    const char *name;
+
+    struct
+    {
+        unsigned int hub_id;
+        unsigned int port;
+    }
+    usb;
 };
 
 struct osdev_volume_info
@@ -44,6 +49,31 @@ struct osdev_volume_info
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*!
+ * Get device information if possible.
+ *
+ * \param devlink
+ *     Name of the device symlink.
+ *
+ * \param[out] devinfo
+ *     Information about the device with given name. Must be freed by caller
+ *     via #osdev_free_device_information().
+ *
+ * \returns
+ *     True on success, false on error. It is safe to pass the \p devinfo
+ *     structure to #osdev_free_device_information() even in case of error.
+ */
+bool osdev_get_device_information(const char *devlink, struct osdev_device_info *devinfo);
+
+/*!
+ * Free resources allocated by a device information structure.
+ *
+ * Note that the memory occupied by the \p devinfo object itself is not freed
+ * by this function. The caller is responsible for managing storage of this
+ * object.
+ */
+void osdev_free_device_information(struct osdev_device_info *devinfo);
 
 /*!
  * Get volume information if possible.

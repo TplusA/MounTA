@@ -170,7 +170,7 @@ const Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
     }
     else if(device != nullptr && data.volume_number_ == 0)
     {
-        device->set_is_real();
+        device->probe();
 
         if(volume != nullptr)
             *volume = device->lookup_volume_by_devname(data.devname_);

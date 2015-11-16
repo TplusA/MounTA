@@ -90,15 +90,22 @@ class Device
         /*!
          * Device was created because the kernel has added it to the system.
          *
-         * Hardware connection not probed yet (not known if this is a USB
-         * device or something else).
+         * Hardware connection has been probed, but device was not yet accepted
+         * as OK-to-use by application.
          */
-        UNCHECKED,
+        PROBED,
 
         /*!
          * Device is usable.
          */
         OK,
+
+        /*!
+         * Device is known and usable, but rejected by system policies.
+         *
+         * If the device is rejected, then so are all its volumes.
+         */
+        REJECTED,
 
         /*!
          * Device is known, but not usable at all.
@@ -122,11 +129,19 @@ class Device
     /*!
      * Human-readable name of the device as extracted from the device.
      *
+     * Basically, this string contains the name of the symlink from
+     * Devices::Device::devlink_name_, without the full path to it. It is
+     * filled when the device is probed, i.e., it will not be available for
+     * synthesized objects.
+     *
      * Note that this is not the name of the block device as maintained by the
      * kernel, but a string that is queried from the device itself. This could
      * be some string from a USB descriptor or from ATA information.
+     *
+     * This string may require some post-processing before being useful for
+     * displaying purposes.
      */
-    std::string display_name_;
+    std::string device_name_;
 
     /*!
      * Where the mountpoints for this device will be created.
@@ -145,15 +160,21 @@ class Device
      * device are not mounted because the device structure was generated from
      * the volume information alone. When the device itself is found and added
      * to the device manager, its state transitions to
-     * #Devices::Device::UNCHECKED.
+     * #Devices::Device::PROBED or #Devices::Device::BROKEN.
      *
-     * When handling the device in state #Devices::Device::UNCHECKED in the
-     * automounter, its properties are queried (such as USB hub ID) and the
-     * device is set to state #Devices::Device::OK.
+     * When handling the device in state #Devices::Device::PROBED in the
+     * automounter, it will call #Devices::Device::accept() or
+     * #Devices::Device::reject(), depending on filter policies. The device is
+     * then set to state #Devices::Device::OK or #Devices::Device::REJECTED,
+     * respectively.
      *
      * In case the state is #Devices::Device::OK, all volumes in
      * #Devices::Device::volumes_ and new volumes found for this device need to
      * be processed (i.e., mounted) while the kernel adds new devices.
+     *
+     * In case the state is #Devices::Device::REJECTED, no volume in
+     * #Devices::Device::volumes_ will be mounted (note that it is also
+     * possible to reject individual volumes).
      *
      * This way we defer mounting of volumes until information about their
      * containing device are available. We need these information for
@@ -179,31 +200,36 @@ class Device
     explicit Device(ID device_id, const std::string &devlink, bool is_real):
         id_(device_id),
         devlink_name_(devlink),
-        display_name_("<BUG: name no extracted yet>"),
-        state_(is_real ? UNCHECKED : SYNTHETIC),
+        state_(SYNTHETIC),
         root_hub_id_(0),
         hub_port_(0)
-    {}
+    {
+        if(is_real)
+            do_probe();
+    }
 
     ~Device();
 
     const ID::value_type get_id() const { return id_.value_; }
     const std::string &get_devlink_name() const { return devlink_name_; }
-    const std::string &get_display_name() const { return display_name_; }
+    const std::string &get_display_name() const { return device_name_; }
+    unsigned int get_usb_hub_id() const { return root_hub_id_.get(); }
+    unsigned int get_usb_port() const { return hub_port_; }
 
     State get_state() const { return state_; }
 
-    void set_is_real()
-    {
-        if(state_ == SYNTHETIC)
-            state_ = UNCHECKED;
-    }
+    void accept() { state_ = OK; }
+    void reject() { state_ = REJECTED; }
+    void probe();
 
     Volume *lookup_volume_by_devname(const char *devname) const;
     bool add_volume(Volume &volume);
 
     decltype(volumes_)::const_iterator begin() const { return volumes_.begin(); };
     decltype(volumes_)::const_iterator end() const   { return volumes_.end(); };
+
+  private:
+    void do_probe();
 };
 
 /*!
@@ -219,6 +245,7 @@ class Volume
         PENDING,  /*!< No attempt has yet been made to mount the volume. */
         MOUNTED,  /*!< Volume is currently mounted. */
         UNUSABLE, /*!< Attempted to mount the volume, but failed. */
+        REJECTED, /*! <Volume is rejected by system policies. */
         REMOVED,  /*!< Volume is not mounted anymore (shutting down). */
     };
 
@@ -283,6 +310,8 @@ class Volume
     State get_state() const { return state_; }
     const std::string &get_label() const { return label_; }
     const std::string &get_device_name() const { return devname_; }
+
+    void reject() { state_ = REJECTED; }
 };
 
 }
