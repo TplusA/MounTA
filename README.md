@@ -99,19 +99,20 @@ How it should work:
 ## Permissions
 
 The _mounta_ daemon requires privileges for mounting and unmounting block
-devices. It uses the `mount` and `umount` programs for this. The `mount` and
-`umount` programs are usually suid binaries, and it should be possible to
-configure the system such that _mounta_ is allowed to mount and unmount USB
-devices without having them mentioned in `/etc/fstab`.
+devices. It uses the `mount` and `umount` programs for this. Use of `mount` and
+`umount` as regular user usually requires a fixed entry in `/etc/fstab`, free
+mounting of anything to anywhere won't work as regular user. Therefore, `sudo`
+and its proper configuration is required to allow _mounta_ to mount and unmount
+USB devices.
 
 The daemon also requires permission to read from block devices so that volume
-labels (partition names) can be obtained using `blkid`. This can be
+labels (partition names) can be obtained using `blkid`. This can either be
 accomplished by `udev` rules that grant group read access rights to block
-devices stored on USB devices. Unix group `plugdev` or `usb` could be used for
-this. The commonly used `disk` group should not be used because this group is
-also used for other devices. Often, this group also has write access to its
-devices, meaning a bug or exploited security hole in _mounta_ could kill the
-root partition.
+devices stored on USB devices, or again by using `sudo`. Unix group `plugdev`
+or `usb` could be used for the `udev` approach. The commonly used `disk` group
+should not be used because this group is also used for other devices. Often,
+this group also has write access to its devices, meaning a bug or exploited
+security hole in _mounta_ could kill the root partition.
 
 Altogether, the system can be configured so that _mounta_ does not require to
 be executed with superuser privileges.
