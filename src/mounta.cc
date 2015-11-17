@@ -111,10 +111,10 @@ static int process_command_line(int argc, char *argv[],
 {
     parameters->run_in_foreground = false;
     parameters->connect_to_session_dbus = true;
-    parameters->mount_tool = "/bin/mount";
-    parameters->unmount_tool = "/bin/umount";
-    parameters->blkid_tool = "/sbin/blkid";
-    parameters->working_directory = "/tmp/MounTA";
+    parameters->mount_tool = "/usr/bin/sudo /bin/mount";
+    parameters->unmount_tool = "/usr/bin/sudo /bin/umount";
+    parameters->blkid_tool = "/usr/bin/sudo /sbin/blkid";
+    parameters->working_directory = "/run/MounTA";
 
     for(int i = 1; i < argc; ++i)
     {
