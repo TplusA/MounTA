@@ -1,0 +1,14 @@
+2015-11-17  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.1 released.
+
+	* First release for testing.
+
+	* Limitations: Volume information (labels) are not retrieved. Mounted
+	  volumes are not gathered at startup. Retrieval of list of devices
+	  and mounted volumes over D-Bus not implemented. Possibly more.
+
+	  This is software in alpha phase.
+
+
+Copyright 2015 T+A elektroakustik GmbH & Co. KG
