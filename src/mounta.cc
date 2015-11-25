@@ -234,7 +234,6 @@ int main(int argc, char *argv[])
     g_unix_signal_add(SIGINT, signal_handler, loop);
     g_unix_signal_add(SIGTERM, signal_handler, loop);
 
-    static FdEvents ev;
     Automounter::ExternalTools tools(parameters.mount_tool, nullptr,
                                      parameters.unmount_tool, nullptr,
                                      parameters.blkid_tool, nullptr);
@@ -244,6 +243,7 @@ int main(int argc, char *argv[])
     if(dbus_setup(loop, parameters.connect_to_session_dbus, &event_data.first) < 0)
         return EXIT_FAILURE;
 
+    static FdEvents ev;
     if(setup_inotify_watch(ev, "/dev/disk/by-id", &event_data) < 0)
         return EXIT_FAILURE;
 
