@@ -34,12 +34,61 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
              iface_name, g_dbus_method_invocation_get_sender(invocation),
              g_dbus_method_invocation_get_method_name(invocation));
 
-    auto am = static_cast<const Automounter::Core *>(user_data);
-    msg_info("AM: %p", am);
+    GVariantBuilder devices_builder;
+    GVariantBuilder volumes_builder;
+    g_variant_builder_init(&devices_builder, G_VARIANT_TYPE("a(qss(uu))"));
+    g_variant_builder_init(&volumes_builder, G_VARIANT_TYPE("a(ussq)"));
 
-    g_dbus_method_invocation_return_error(invocation,
-                                          G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED,
-                                          "not implemented");
+    auto am = static_cast<const Automounter::Core *>(user_data);
+    log_assert(am != nullptr);
+
+    for(const auto &device : *am)
+    {
+        if(device.get_state() != Devices::Device::OK)
+            continue;
+
+        /* note: this duplicates #announce_new_device() */
+        g_variant_builder_add(&devices_builder,
+                              "(qss(uu))",
+                              device.get_id(),
+                              device.get_display_name().c_str(),
+                              device.get_working_directory().c_str(),
+                              device.get_usb_hub_id(), device.get_usb_port());
+
+        for(const auto &volume_iter : device)
+        {
+            const auto &volume = *volume_iter.second;
+
+            if(volume.get_state() != Devices::Volume::MOUNTED)
+                continue;
+
+            /* note: this duplicates #announce_new_volume() */
+            g_variant_builder_add(&volumes_builder,
+                                  "(ussq)",
+                                  volume.get_index() >= 0 ? volume.get_index() : UINT_MAX,
+                                  volume.get_label().c_str(),
+                                  volume.get_mountpoint().c_str(),
+                                  volume.get_device()->get_id());
+        }
+    }
+
+    GVariant *const devices = g_variant_builder_end(&devices_builder);
+    GVariant *const volumes = g_variant_builder_end(&volumes_builder);
+
+    if(devices != nullptr && volumes != nullptr)
+        tdbus_moun_ta_complete_get_all(object, invocation, devices, volumes);
+    else
+    {
+        if(devices != nullptr)
+            g_variant_unref(devices);
+
+        if(volumes != nullptr)
+            g_variant_unref(volumes);
+
+        g_dbus_method_invocation_return_error(invocation,
+                                              G_DBUS_ERROR, G_DBUS_ERROR_NO_MEMORY,
+                                              "Failed building answer");
+    }
 
     return TRUE;
 }

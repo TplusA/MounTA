@@ -30,6 +30,7 @@
 
 static void announce_new_volume(const Devices::Volume &vol)
 {
+    /* note: this duplicates part of #dbusmethod_get_all() */
     tdbus_moun_ta_emit_new_volume(dbus_get_mounta_iface(),
                                   vol.get_index() >= 0 ? vol.get_index() : UINT_MAX,
                                   vol.get_label().c_str(),
@@ -41,6 +42,7 @@ static void announce_new_device(const Devices::Device &dev)
 {
     if(!dev.get_working_directory().empty())
     {
+        /* note: this duplicates part of #dbusmethod_get_all() */
         GVariant *usb_info =
             g_variant_new("(uu)", dev.get_usb_hub_id(), dev.get_usb_port());
         tdbus_moun_ta_emit_new_usbdevice(dbus_get_mounta_iface(),
