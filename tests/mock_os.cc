@@ -35,9 +35,14 @@ enum class OsFn
     mkdir_hierarchy,
     unix_mkdir,
     unix_rmdir,
+    file_new,
+    file_close,
+    file_delete,
+    map_file_to_memory,
+    unmap_file,
 
     first_valid_os_fn_id = stdlib_abort,
-    last_valid_os_fn_id = unix_rmdir,
+    last_valid_os_fn_id = unmap_file,
 };
 
 
@@ -83,6 +88,26 @@ static std::ostream &operator<<(std::ostream &os, const OsFn id)
       case OsFn::unix_rmdir:
         os << "unix_rmdir";
         break;
+
+      case OsFn::file_new:
+        os << "file_new";
+        break;
+
+      case OsFn::file_close:
+        os << "file_close";
+        break;
+
+      case OsFn::file_delete:
+        os << "file_delete";
+        break;
+
+      case OsFn::map_file_to_memory:
+        os << "map_file_to_memory";
+        break;
+
+      case OsFn::unmap_file:
+        os << "unmap_file";
+        break;
     }
 
     os << "()";
@@ -101,11 +126,22 @@ class MockOs::Expectation
         bool ret_bool_;
         std::string arg_string_;
         bool arg_bool_;
+        int arg_fd_;
+        struct os_mapped_file_data *arg_mapped_pointer_;
+        const struct os_mapped_file_data *arg_mapped_template_;
+        bool arg_pointer_expect_concrete_value_;
+        bool arg_pointer_shall_be_null_;
 
         explicit Data(OsFn fn):
             function_id_(fn),
             ret_int_(-1),
-            ret_bool_(false)
+            ret_bool_(false),
+            arg_bool_(false),
+            arg_fd_(-1),
+            arg_mapped_pointer_(nullptr),
+            arg_mapped_template_(nullptr),
+            arg_pointer_expect_concrete_value_(false),
+            arg_pointer_shall_be_null_(false)
         {}
     };
 
@@ -146,6 +182,66 @@ class MockOs::Expectation
         data_.ret_bool_ = ret_bool;
         data_.arg_string_ = arg_string;
         data_.arg_bool_ = arg_bool;
+    }
+
+    explicit Expectation(int ret, const char *filename):
+        d(OsFn::file_new)
+    {
+        data_.ret_bool_ = ret;
+        data_.arg_string_ = filename;
+    }
+
+    explicit Expectation(OsFn fn, const char *filename):
+        d(fn)
+    {
+        data_.arg_string_ = filename;
+    }
+
+    explicit Expectation(OsFn fn, int fd):
+        d(fn)
+    {
+        data_.arg_fd_ = fd;
+    }
+
+    explicit Expectation(int ret, struct os_mapped_file_data *mapped,
+                         const char *filename):
+        d(OsFn::map_file_to_memory)
+    {
+        data_.ret_int_ = ret;
+        data_.arg_mapped_pointer_ = mapped;
+        data_.arg_pointer_shall_be_null_ = (mapped == nullptr);
+        data_.arg_string_ = filename;
+    }
+
+    explicit Expectation(const struct os_mapped_file_data *mapped,
+                         const char *filename):
+        d(OsFn::map_file_to_memory)
+    {
+        data_.ret_int_ = (mapped != nullptr && mapped->fd >= 0 && mapped->ptr != NULL) ? 0 : -1;
+        data_.arg_mapped_template_ = mapped;
+        data_.arg_string_ = filename;
+    }
+
+    explicit Expectation(int ret, bool expect_null_pointer,
+                         const char *filename):
+        d(OsFn::map_file_to_memory)
+    {
+        data_.ret_int_ = ret;
+        data_.arg_pointer_shall_be_null_ = expect_null_pointer;
+        data_.arg_string_ = filename;
+    }
+
+    explicit Expectation(struct os_mapped_file_data *mapped):
+        d(OsFn::unmap_file)
+    {
+        data_.arg_mapped_pointer_ = mapped;
+        data_.arg_pointer_shall_be_null_ = (mapped == nullptr);
+    }
+
+    explicit Expectation(const struct os_mapped_file_data *mapped):
+        d(OsFn::unmap_file)
+    {
+        data_.arg_mapped_template_ = mapped;
     }
 
     explicit Expectation(OsFn fn):
@@ -220,6 +316,60 @@ void MockOs::expect_os_mkdir(bool retval, const char *path, bool must_not_exist)
 void MockOs::expect_os_rmdir(bool retval, const char *path, bool must_exist)
 {
     expectations_->add(Expectation(OsFn::unix_rmdir, retval, path, must_exist));
+}
+
+void MockOs::expect_os_file_new(int ret, const char *filename)
+{
+    expectations_->add(Expectation(ret, filename));
+}
+
+void MockOs::expect_os_file_close(int fd)
+{
+    expectations_->add(Expectation(OsFn::file_close, fd));
+}
+
+void MockOs::expect_os_file_delete(const char *filename)
+{
+    expectations_->add(Expectation(OsFn::file_delete, filename));
+}
+
+void MockOs::expect_os_map_file_to_memory(int ret, struct os_mapped_file_data *mapped,
+                                          const char *filename)
+{
+    expectations_->add(Expectation(ret, mapped, filename));
+}
+
+void MockOs::expect_os_map_file_to_memory(int ret, bool expect_null_pointer,
+                                          const char *filename)
+{
+    if(expect_null_pointer)
+        expectations_->add(Expectation(ret, nullptr, filename));
+    else
+        expectations_->add(Expectation(ret, false, filename));
+}
+
+void MockOs::expect_os_map_file_to_memory(const struct os_mapped_file_data *mapped,
+                                          const char *filename)
+{
+    expectations_->add(Expectation(mapped, filename));
+}
+
+void MockOs::expect_os_unmap_file(struct os_mapped_file_data *mapped)
+{
+    expectations_->add(Expectation(mapped));
+}
+
+void MockOs::expect_os_unmap_file(const struct os_mapped_file_data *mapped)
+{
+    expectations_->add(Expectation(mapped));
+}
+
+void MockOs::expect_os_unmap_file(bool expect_null_pointer)
+{
+    if(expect_null_pointer)
+        expectations_->add(Expectation(static_cast<struct os_mapped_file_data *>(nullptr)));
+    else
+        expectations_->add(Expectation(OsFn::unmap_file, false));
 }
 
 
@@ -314,4 +464,72 @@ bool os_rmdir(const char *path, bool must_exist)
     cppcut_assert_equal(expect.d.arg_bool_, must_exist);
 
     return expect.d.ret_bool_;
+}
+
+int os_file_new(const char *filename)
+{
+    const auto &expect(mock_os_singleton->expectations_->get_next_expectation(__func__));
+
+    cppcut_assert_equal(expect.d.function_id_, OsFn::file_new);
+    cppcut_assert_equal(expect.d.arg_string_, std::string(filename));
+    return expect.d.ret_int_;
+}
+
+void os_file_close(int fd)
+{
+    const auto &expect(mock_os_singleton->expectations_->get_next_expectation(__func__));
+
+    cppcut_assert_equal(expect.d.function_id_, OsFn::file_close);
+    cppcut_assert_equal(expect.d.arg_fd_, fd);
+}
+
+void os_file_delete(const char *filename)
+{
+    const auto &expect(mock_os_singleton->expectations_->get_next_expectation(__func__));
+
+    cppcut_assert_equal(expect.d.function_id_, OsFn::file_delete);
+    cppcut_assert_equal(expect.d.arg_string_, std::string(filename));
+}
+
+int os_map_file_to_memory(struct os_mapped_file_data *mapped,
+                          const char *filename)
+{
+    const auto &expect(mock_os_singleton->expectations_->get_next_expectation(__func__));
+
+    cppcut_assert_equal(expect.d.function_id_, OsFn::map_file_to_memory);
+
+    if(expect.d.arg_mapped_template_ != nullptr)
+        *mapped = *expect.d.arg_mapped_template_;
+    else
+    {
+        if(expect.d.arg_pointer_expect_concrete_value_)
+            cppcut_assert_equal(expect.d.arg_mapped_pointer_, mapped);
+        else if(expect.d.arg_pointer_shall_be_null_)
+            cppcut_assert_null(mapped);
+        else
+            cppcut_assert_not_null(mapped);
+    }
+
+    cppcut_assert_equal(expect.d.arg_string_, std::string(filename));
+
+    return expect.d.ret_int_;
+}
+
+void os_unmap_file(struct os_mapped_file_data *mapped)
+{
+    const auto &expect(mock_os_singleton->expectations_->get_next_expectation(__func__));
+
+    cppcut_assert_equal(expect.d.function_id_, OsFn::unmap_file);
+
+    if(expect.d.arg_mapped_template_ != nullptr)
+        *mapped = *expect.d.arg_mapped_template_;
+    else
+    {
+        if(expect.d.arg_pointer_expect_concrete_value_)
+            cppcut_assert_equal(expect.d.arg_mapped_pointer_, mapped);
+        else if(expect.d.arg_pointer_shall_be_null_)
+            cppcut_assert_null(mapped);
+        else
+            cppcut_assert_not_null(mapped);
+    }
 }

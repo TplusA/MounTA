@@ -25,8 +25,10 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <errno.h>
 
 #include "os.h"
@@ -195,4 +197,104 @@ bool os_rmdir(const char *path, bool must_exist)
         msg_error(errno, LOG_ERR, "Failed removing directory %s", path);
 
     return false;
+}
+
+int os_file_new(const char *filename)
+{
+    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC,
+                  S_IRWXU | S_IRWXG | S_IRWXO);
+
+    if(fd < 0)
+        msg_error(errno, LOG_ERR, "Failed to create file \"%s\"", filename);
+
+    return fd;
+}
+
+static void safe_close_fd(int fd)
+{
+    (void)fsync(fd);
+
+    int ret;
+    while((ret = close(fd)) == -1 && errno == EINTR)
+        ;
+
+    if(ret == -1 && errno != EINTR)
+        msg_error(errno, LOG_ERR, "Failed to close file descriptor %d", fd);
+}
+
+void os_file_close(int fd)
+{
+    if(fd < 0)
+        msg_error(EINVAL, LOG_ERR,
+                  "Passed invalid file descriptor to %s()", __func__);
+    else
+        safe_close_fd(fd);
+}
+
+void os_file_delete(const char *filename)
+{
+    log_assert(filename != NULL);
+
+    if(unlink(filename) < 0)
+        msg_error(errno, LOG_ERR, "Failed to delete file \"%s\"", filename);
+}
+
+int os_map_file_to_memory(struct os_mapped_file_data *mapped,
+                          const char *filename)
+{
+    log_assert(mapped != NULL);
+    log_assert(filename != NULL);
+
+    mapped->fd = open(filename, O_RDONLY);
+
+    if(mapped->fd < 0)
+    {
+        msg_error(errno, LOG_ERR, "Failed to open() file \"%s\"", filename);
+        return -1;
+    }
+
+    struct stat buf;
+    if(fstat(mapped->fd, &buf) < 0)
+    {
+        msg_error(errno, LOG_ERR, "Failed to fstat() file \"%s\"", filename);
+        goto error_exit;
+    }
+
+    mapped->length = buf.st_size;
+
+    if(mapped->length == 0)
+    {
+        msg_error(errno, LOG_ERR, "Refusing to map empty file \"%s\"", filename);
+        goto error_exit;
+    }
+
+    mapped->ptr =
+        mmap(NULL, mapped->length, PROT_READ, MAP_PRIVATE, mapped->fd, 0);
+
+    if(mapped->ptr == MAP_FAILED)
+    {
+        msg_error(errno, LOG_ERR, "Failed to mmap() file \"%s\"", filename);
+        goto error_exit;
+    }
+
+    return 0;
+
+error_exit:
+    safe_close_fd(mapped->fd);
+    mapped->fd = -1;
+
+    return -1;
+}
+
+void os_unmap_file(struct os_mapped_file_data *mapped)
+{
+    log_assert(mapped != NULL);
+
+    if(mapped->fd < 0)
+        return;
+
+    (void)munmap(mapped->ptr, mapped->length);
+
+    safe_close_fd(mapped->fd);
+    mapped->fd = -1;
 }

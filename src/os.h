@@ -22,6 +22,16 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+/*!
+ * Data for keeping track of memory-mapped files.
+ */
+struct os_mapped_file_data
+{
+    int fd;
+    void *ptr;
+    size_t length;
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,6 +59,14 @@ char *os_resolve_symlink(const char *link);
 bool os_mkdir_hierarchy(const char *path, bool must_not_exist);
 bool os_mkdir(const char *path, bool must_not_exist);
 bool os_rmdir(const char *path, bool must_exist);
+
+int os_file_new(const char *filename);
+void os_file_close(int fd);
+void os_file_delete(const char *filename);
+
+int os_map_file_to_memory(struct os_mapped_file_data *mapped,
+                          const char *filename);
+void os_unmap_file(struct os_mapped_file_data *mapped);
 
 #ifdef __cplusplus
 }
