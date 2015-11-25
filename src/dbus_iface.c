@@ -51,8 +51,6 @@ static int handle_dbus_error(GError **error)
 static void bus_acquired(GDBusConnection *connection,
                          const gchar *name, gpointer user_data)
 {
-    msg_info("D-Bus \"%s\" acquired", name);
-
     struct dbus_data *data = user_data;
 
     msg_info("D-Bus \"%s\" acquired (%s bus)",
