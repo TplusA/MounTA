@@ -1,3 +1,15 @@
+2015-12-01  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.2 released.
+
+	* D-Bus interfaces: Fixed some flaws in interface design.
+
+	* D-Bus interfaces: Devices and mounted volumes can be queried by
+	  calling the de.tahifi.MounTA.GetAll D-Bus method.
+
+	* Volume handling: Labels are read out with the help of the external
+	  blkid tool.
+
 2015-11-17  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.1 released.
