@@ -101,6 +101,7 @@ static void usage(const char *program_name)
         "  --help         Show this help.\n"
         "  --version      Print version information to stdout.\n"
         "  --fg           Run in foreground, don't run as daemon.\n"
+        "  --workdir PATH Where the mountpoints are to be maintained.\n"
         "  --session-dbus Connect to session D-Bus.\n"
         "  --system-dbus  Connect to system D-Bus."
         << std::endl;
@@ -116,6 +117,18 @@ static int process_command_line(int argc, char *argv[],
     parameters->blkid_tool = "/usr/bin/sudo /sbin/blkid";
     parameters->working_directory = "/run/MounTA";
 
+#define CHECK_ARGUMENT() \
+    do \
+    { \
+        if(i + 1 >= argc) \
+        { \
+            fprintf(stderr, "Option %s requires an argument.\n", argv[i]); \
+            return -1; \
+        } \
+        ++i; \
+    } \
+    while(0)
+
     for(int i = 1; i < argc; ++i)
     {
         if(strcmp(argv[i], "--help") == 0)
@@ -124,6 +137,11 @@ static int process_command_line(int argc, char *argv[],
             return 2;
         else if(strcmp(argv[i], "--fg") == 0)
             parameters->run_in_foreground = true;
+        else if(strcmp(argv[i], "--workdir") == 0)
+        {
+            CHECK_ARGUMENT();
+            parameters->working_directory = argv[i];
+        }
         else if(strcmp(argv[i], "--session-dbus") == 0)
             parameters->connect_to_session_dbus = true;
         else if(strcmp(argv[i], "--system-dbus") == 0)
@@ -135,6 +153,8 @@ static int process_command_line(int argc, char *argv[],
             return -1;
         }
     }
+
+#undef CHECK_ARGUMENT
 
     return 0;
 }
