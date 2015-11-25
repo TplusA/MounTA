@@ -82,6 +82,36 @@ class Core
     void handle_new_device(const char *device_path);
     void handle_removed_device(const char *device_path);
     void shutdown();
+
+    class const_iterator
+    {
+      private:
+        std::map<Devices::ID::value_type, Devices::Device *>::const_iterator dev_iter_;
+
+      public:
+        explicit constexpr const_iterator(decltype(dev_iter_) &&dev_iter):
+            dev_iter_(dev_iter)
+        {}
+
+        const Devices::Device &operator*() const
+        {
+            return *dev_iter_->second;
+        }
+
+        bool operator!=(const const_iterator &it) const
+        {
+            return dev_iter_ != it.dev_iter_;
+        }
+
+        const_iterator &operator++()
+        {
+            ++dev_iter_;
+            return *this;
+        }
+    };
+
+    const_iterator begin() const { return const_iterator(devman_.begin()); }
+    const_iterator end() const   { return const_iterator(devman_.end()); }
 };
 
 }
