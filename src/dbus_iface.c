@@ -24,6 +24,7 @@
 
 #include "dbus_iface.h"
 #include "dbus_iface_deep.h"
+#include "dbus_handlers.h"
 #include "mounta_dbus.h"
 #include "messages.h"
 
@@ -34,6 +35,7 @@ struct dbus_data
 
     bool connect_to_session_bus;
     tdbusMounTA *mounta_iface;
+    void *mounta_iface_user_data;
 };
 
 static int handle_dbus_error(GError **error)
@@ -57,6 +59,10 @@ static void bus_acquired(GDBusConnection *connection,
              name, data->connect_to_session_bus ? "session" : "system");
 
     data->mounta_iface = tdbus_moun_ta_skeleton_new();
+
+    g_signal_connect(data->mounta_iface, "handle-get-all",
+                     G_CALLBACK(dbusmethod_get_all),
+                     data->mounta_iface_user_data);
 
     GError *error = NULL;
     g_dbus_interface_skeleton_export(G_DBUS_INTERFACE_SKELETON(data->mounta_iface),
@@ -89,11 +95,13 @@ static void destroy_notification(gpointer data)
 
 static struct dbus_data dbus_data;
 
-int dbus_setup(GMainLoop *loop, bool connect_to_session_bus)
+int dbus_setup(GMainLoop *loop, bool connect_to_session_bus,
+               void *automounter_for_dbus_handlers)
 {
     memset(&dbus_data, 0, sizeof(dbus_data));
 
     dbus_data.connect_to_session_bus = connect_to_session_bus;
+    dbus_data.mounta_iface_user_data = automounter_for_dbus_handlers;
 
     GBusType bus_type =
         connect_to_session_bus ? G_BUS_TYPE_SESSION : G_BUS_TYPE_SYSTEM;

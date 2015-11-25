@@ -16,30 +16,21 @@
  * along with MounTA.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef DBUS_IFACE_H
-#define DBUS_IFACE_H
+#ifndef DBUS_HANDLERS_H
+#define DBUS_HANDLERS_H
 
-#include <stdbool.h>
-#include <glib.h>
-
-/*!
- * \addtogroup dbus DBus handling
- */
-/*!@{*/
+#include "mounta_dbus.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int dbus_setup(GMainLoop *loop, bool connect_to_session_bus,
-               void *automounter_for_dbus_handlers);
-void dbus_shutdown(GMainLoop *loop);
+gboolean dbusmethod_get_all(tdbusMounTA *object,
+                            GDBusMethodInvocation *invocation,
+                            void *user_data);
 
 #ifdef __cplusplus
 }
 #endif
 
-/*!@}*/
-
-#endif /* !DBUS_IFACE_H */
-
+#endif /* !DBUS_HANDLERS_H */

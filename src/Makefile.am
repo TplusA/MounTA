@@ -27,6 +27,7 @@ mounta_SOURCES = \
     fdevents.hh fdevents.cc \
     automounter.hh automounter.cc \
     dbus_iface.c dbus_iface.h dbus_iface_deep.h \
+    dbus_handlers.cc dbus_handlers.h \
     os.c os.h
 
 DBUS_IFACES = $(top_srcdir)/dbus_interfaces

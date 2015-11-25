@@ -231,9 +231,6 @@ int main(int argc, char *argv[])
     if(setup(&parameters, &loop) < 0)
         return EXIT_FAILURE;
 
-    if(dbus_setup(loop, parameters.connect_to_session_dbus) < 0)
-        return EXIT_FAILURE;
-
     g_unix_signal_add(SIGINT, signal_handler, loop);
     g_unix_signal_add(SIGTERM, signal_handler, loop);
 
@@ -243,6 +240,10 @@ int main(int argc, char *argv[])
                                      parameters.blkid_tool, nullptr);
     auto event_data =
         std::make_pair(Automounter::Core(parameters.working_directory, tools), loop);
+
+    if(dbus_setup(loop, parameters.connect_to_session_dbus, &event_data.first) < 0)
+        return EXIT_FAILURE;
+
     if(setup_inotify_watch(ev, "/dev/disk/by-id", &event_data) < 0)
         return EXIT_FAILURE;
 
