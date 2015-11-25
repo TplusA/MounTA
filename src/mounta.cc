@@ -235,8 +235,7 @@ int main(int argc, char *argv[])
     g_unix_signal_add(SIGTERM, signal_handler, loop);
 
     Automounter::ExternalTools tools(parameters.mount_tool, nullptr,
-                                     parameters.unmount_tool, nullptr,
-                                     parameters.blkid_tool, nullptr);
+                                     parameters.unmount_tool, nullptr);
     auto event_data =
         std::make_pair(Automounter::Core(parameters.working_directory, tools), loop);
 
