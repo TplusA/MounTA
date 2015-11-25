@@ -34,7 +34,7 @@ static void announce_new_volume(const Devices::Volume &vol)
                                   vol.get_index() >= 0 ? vol.get_index() : UINT_MAX,
                                   vol.get_label().c_str(),
                                   vol.get_mountpoint().c_str(),
-                                  vol.get_device()->get_display_name().c_str());
+                                  vol.get_device()->get_id());
 }
 
 static void announce_new_device(const Devices::Device &dev)
@@ -44,6 +44,7 @@ static void announce_new_device(const Devices::Device &dev)
         GVariant *usb_info =
             g_variant_new("(uu)", dev.get_usb_hub_id(), dev.get_usb_port());
         tdbus_moun_ta_emit_new_usbdevice(dbus_get_mounta_iface(),
+                                         dev.get_id(),
                                          dev.get_display_name().c_str(),
                                          dev.get_working_directory().c_str(),
                                          usb_info);
@@ -54,7 +55,7 @@ static void announce_device_removed(const Devices::Device &dev)
 {
     if(!dev.get_working_directory().empty())
         tdbus_moun_ta_emit_device_removed(dbus_get_mounta_iface(),
-                                          dev.get_display_name().c_str(),
+                                          dev.get_id(),
                                           dev.get_working_directory().c_str());
 }
 
