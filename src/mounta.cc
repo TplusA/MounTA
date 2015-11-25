@@ -89,6 +89,8 @@ static int setup(const struct parameters *parameters, GMainLoop **loop)
         return -1;
     }
 
+    osdev_init(parameters->blkid_tool, NULL);
+
     return 0;
 }
 

@@ -51,6 +51,14 @@ extern "C" {
 #endif
 
 /*!
+ * Pass details about the \c blkid command.
+ *
+ * It is required to call this function before calling
+ * ##osdev_get_volume_information().
+ */
+void osdev_init(const char *blkid_command, const char *blkid_options);
+
+/*!
  * Get device information if possible.
  *
  * \param devlink
