@@ -89,7 +89,7 @@ bool os_foreach_in_path(const char *path,
 
     if(dir == NULL)
     {
-        msg_error(errno, LOG_ERR, "Failed reading directory \"%s\"", path);
+        msg_error(errno, LOG_ERR, "Failed opening directory \"%s\"", path);
         return false;
     }
 
@@ -108,6 +108,11 @@ bool os_foreach_in_path(const char *path,
         else
         {
             retval = (errno == 0);
+
+            if(!retval)
+                msg_error(errno, LOG_ERR,
+                          "Failed reading directory \"%s\"", path);
+
             break;
         }
     }
