@@ -342,7 +342,8 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
                          ? volinfo.label
                          : volinfo.fstype);
 
-    volume = new Devices::Volume(*device, volinfo.idx, label, devname);
+    volume = new Devices::Volume(*device, volinfo.idx,
+                                 label, volinfo.fstype, devname);
 
     if(volume == nullptr)
         msg_out_of_memory("Volume object");

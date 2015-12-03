@@ -287,6 +287,11 @@ class Volume
     std::string label_;
 
     /*!
+     * Volume file system type.
+     */
+    std::string fstype_;
+
+    /*!
      * Name of the block device.
      */
     std::string devname_;
@@ -301,11 +306,12 @@ class Volume
     Volume &operator=(const Volume &) = delete;
 
     explicit Volume(Device &containing_device, int idx, const char *label,
-                    const char *devname):
+                    const char *fstype, const char *devname):
         containing_device_(containing_device),
         index_(idx),
         state_(PENDING),
         label_(label),
+        fstype_(fstype),
         devname_(devname)
     {}
 
@@ -318,6 +324,7 @@ class Volume
     int get_index() const { return index_; }
     State get_state() const { return state_; }
     const std::string &get_label() const { return label_; }
+    const std::string &get_fstype() const { return fstype_; }
     const std::string &get_device_name() const { return devname_; }
 
     void reject() { state_ = REJECTED; }

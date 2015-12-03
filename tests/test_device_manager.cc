@@ -174,6 +174,8 @@ static void remove_device_with_expectations(const char *devlink,
             cppcut_assert_operator(expected_volumes_count, >, volumes_seen);
             cppcut_assert_equal(expected_volumes[volumes_seen].block_device_name,
                                 vol.get_device_name().c_str());
+            cppcut_assert_equal(expected_volumes[volumes_seen].volume_fstype,
+                                vol.get_fstype().c_str());
             ++volumes_seen;
         });
 
@@ -203,6 +205,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     cppcut_assert_not_null(vol);
     cppcut_assert_equal(expected_device, vol->get_device());
     cppcut_assert_equal(volume_names.volume_label, vol->get_label().c_str());
+    cppcut_assert_equal(volume_names.volume_fstype, vol->get_fstype().c_str());
     cppcut_assert_equal(expected_device_state, vol->get_device()->get_state());
 
     cppcut_assert_equal(vol, expected_device->lookup_volume_by_devname(vol->get_device_name().c_str()));
@@ -230,6 +233,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     ret_device = devs->new_entry(volume_names.device_identifier, &vol);
     cppcut_assert_not_null(vol);
     cppcut_assert_equal(volume_names.volume_label, vol->get_label().c_str());
+    cppcut_assert_equal(volume_names.volume_fstype, vol->get_fstype().c_str());
 
     if(expecting_null_device)
         cppcut_assert_null(ret_device);
@@ -283,6 +287,7 @@ void test_new_device_with_volumes()
     {
         cppcut_assert_operator(volume_names.size(), >, i);
         cppcut_assert_equal(volume_names[i].volume_label, p.second->get_label().c_str());
+        cppcut_assert_equal(volume_names[i].volume_fstype, p.second->get_fstype().c_str());
         ++i;
     }
 
@@ -319,6 +324,7 @@ void test_new_device_with_volume_on_whole_disk()
     cppcut_assert_equal(expected_volume.block_device_name, vol->get_device_name().c_str());
     cppcut_assert_equal(expected_volume.device_identifier, vol->get_device()->get_devlink_name().c_str());
     cppcut_assert_equal(expected_volume.volume_label, vol->get_label().c_str());
+    cppcut_assert_equal(expected_volume.volume_fstype, vol->get_fstype().c_str());
     cppcut_assert_equal(-1, vol->get_index());
 }
 
