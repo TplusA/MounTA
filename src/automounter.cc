@@ -28,6 +28,23 @@
 #include "messages.h"
 #include "os.h"
 
+const char *Automounter::FSMountOptions::get_options(const std::string &fstype) const
+{
+    auto it = options_.find(fstype);
+
+    if(it != options_.end())
+    {
+        if(it->second != nullptr)
+            return it->second;
+    }
+    else
+        msg_error(0, LOG_NOTICE,
+                  "WARNING: Encountered unsupported file system \"%s\"",
+                  fstype.c_str());
+
+    return "";
+}
+
 static void announce_new_volume(const Devices::Volume &vol)
 {
     /* note: this duplicates part of #dbusmethod_get_all() */
@@ -91,13 +108,15 @@ static std::string ensure_mountpoint_directory(const std::string &wd,
 }
 
 static void do_mount_volume(Devices::Volume *volume, const std::string &path,
-                            const Automounter::ExternalTools &tools)
+                            const Automounter::ExternalTools &tools,
+                            const Automounter::FSMountOptions &mount_options)
 {
     log_assert(volume->get_state() == Devices::Volume::PENDING);
 
-    if(os_system_formatted("%s %s %s %s",
+    if(os_system_formatted("%s %s %s %s %s",
                            tools.mount_.executable_.c_str(),
                            tools.mount_.options_.c_str(),
+                           mount_options.get_options(volume->get_fstype()),
                            volume->get_device_name().c_str(), path.c_str()) == 0)
     {
         volume->set_mounted(path);
@@ -264,7 +283,7 @@ void Automounter::Core::handle_new_device(const char *device_path)
      * None of the filters kicked in, so we'll try to mount the volume now.
      */
     if(!mountpoint_path.empty())
-        do_mount_volume(vol, mountpoint_path, tools_);
+        do_mount_volume(vol, mountpoint_path, tools_, mount_options_);
     else
         vol->set_unusable();
 }

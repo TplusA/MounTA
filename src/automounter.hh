@@ -20,11 +20,49 @@
 #define AUTOMOUNTER_HH
 
 #include <string>
+#include <map>
 
 #include "device_manager.hh"
 
 namespace Automounter
 {
+
+class FSMountOptions
+{
+  private:
+    const std::map<const std::string, const char *const> options_;
+
+  public:
+    FSMountOptions(const FSMountOptions &) = delete;
+    FSMountOptions &operator=(const FSMountOptions &) = delete;
+
+    /*!
+     * Ctor for #FSMountOptions.
+     *
+     * \param options
+     *     A map that stores a pointer to a plain C string of extra mount
+     *     options per file system. To express that a file system is supported,
+     *     but no extra options are required, the file system should be
+     *     explicitly mapped to \c nullptr.
+     */
+    explicit FSMountOptions(std::map<const std::string, const char *const> &&options):
+        options_(options)
+    {}
+
+    /*!
+     * Get mount options specific to given file system.
+     *
+     * \param fstype
+     *     Name of the file system as it is called by the Linux kernel and as
+     *     reported by the \c blkid tool.
+     *
+     * \returns
+     *     A string that is safe to add to the \c mount command, guaranteed to
+     *     be non-NULL. In case there are no specific options, this function
+     *     returns the empty string.
+     */
+    const char *get_options(const std::string &fstype) const;
+};
 
 class ExternalTools
 {
@@ -64,6 +102,7 @@ class Core
   private:
     const std::string working_directory_;
     const ExternalTools &tools_;
+    const FSMountOptions &mount_options_;
     Devices::AllDevices devman_;
 
   public:
@@ -71,9 +110,11 @@ class Core
     Core &operator=(const Core &) = delete;
     Core(Core &&) = default;
 
-    explicit Core(const char *working_directory, const ExternalTools &tools):
+    explicit Core(const char *working_directory, const ExternalTools &tools,
+                  const FSMountOptions &mount_options):
         working_directory_(working_directory),
-        tools_(std::move(tools))
+        tools_(tools),
+        mount_options_(mount_options)
     {}
 
     void handle_new_device(const char *device_path);

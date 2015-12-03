@@ -238,10 +238,30 @@ int main(int argc, char *argv[])
 
     static constexpr const char mount_options_default[] = "-o ro";
 
+    static constexpr const char mount_options_ext234[] = "-o errors=continue";
+    static constexpr const char mount_options_fatish[] = "-o umask=222";
+
+    static const Automounter::FSMountOptions
+    mount_options(std::map<const std::string, const char *const>
+    {
+        { "ext2",    mount_options_ext234 },
+        { "ext3",    mount_options_ext234 },
+        { "ext4",    mount_options_ext234 },
+        { "jfs",     mount_options_ext234 },
+        { "xfs",     nullptr },
+        { "btrfs",   nullptr },
+        { "msdos",   mount_options_fatish },
+        { "vfat",    mount_options_fatish },
+        { "ntfs",    mount_options_fatish },
+        { "hfs",     mount_options_fatish },
+        { "hfsplus", mount_options_fatish },
+    });
     Automounter::ExternalTools tools(parameters.mount_tool,   mount_options_default,
                                      parameters.unmount_tool, nullptr);
     auto event_data =
-        std::make_pair(Automounter::Core(parameters.working_directory, tools), loop);
+        std::make_pair(Automounter::Core(parameters.working_directory, tools,
+                                         mount_options),
+                       loop);
 
     if(dbus_setup(loop, parameters.connect_to_session_dbus, &event_data.first) < 0)
         return EXIT_FAILURE;
