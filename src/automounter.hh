@@ -54,7 +54,7 @@ class ExternalTools
 
     explicit ExternalTools(const char *mount,   const char *mount_default_options,
                            const char *unmount, const char *unmount_default_options):
-        mount_(mount,     mount_default_options != nullptr ? mount_default_options : "-o ro"),
+        mount_(mount,     mount_default_options),
         unmount_(unmount, unmount_default_options)
     {}
 };

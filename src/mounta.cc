@@ -236,7 +236,9 @@ int main(int argc, char *argv[])
     g_unix_signal_add(SIGINT, signal_handler, loop);
     g_unix_signal_add(SIGTERM, signal_handler, loop);
 
-    Automounter::ExternalTools tools(parameters.mount_tool, nullptr,
+    static constexpr const char mount_options_default[] = "-o ro";
+
+    Automounter::ExternalTools tools(parameters.mount_tool,   mount_options_default,
                                      parameters.unmount_tool, nullptr);
     auto event_data =
         std::make_pair(Automounter::Core(parameters.working_directory, tools), loop);
