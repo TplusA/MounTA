@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
     g_unix_signal_add(SIGINT, signal_handler, loop);
     g_unix_signal_add(SIGTERM, signal_handler, loop);
 
-    static constexpr const char mount_options_default[] = "-o ro";
+    static constexpr const char mount_options_default[] = "-o ro,noexec,nosuid,nodev,user";
 
     static constexpr const char mount_options_ext234[] = "-o errors=continue";
     static constexpr const char mount_options_fatish[] = "-o umask=222";
