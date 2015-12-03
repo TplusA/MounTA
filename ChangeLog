@@ -1,3 +1,13 @@
+2015-12-08  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.3 released.
+
+	* Volume handling: Mount vfat and similar simple file systems so that
+	  all files and directories are accessible. This is accomplished by
+	  using the umask mount option.
+
+	* Volume handling: Adjusted default mount options for security.
+
 2015-12-01  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.2 released.
