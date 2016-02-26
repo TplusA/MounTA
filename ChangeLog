@@ -1,3 +1,9 @@
+2016-02-26  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.5 released.
+
+	* Bug fix: Use correct name in syslog messages.
+
 2016-02-12  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.4 released.
