@@ -72,7 +72,7 @@ static int setup(const struct parameters *parameters, GMainLoop **loop)
     msg_enable_syslog(!parameters->run_in_foreground);
 
     if(!parameters->run_in_foreground)
-        openlog("drcpd", LOG_PID, LOG_DAEMON);
+        openlog("mounta", LOG_PID, LOG_DAEMON);
 
     if(!parameters->run_in_foreground)
     {
