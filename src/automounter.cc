@@ -176,13 +176,19 @@ static void apply_device_filter(Devices::Device &dev)
 {
     log_assert(dev.get_state() == Devices::Device::PROBED);
 
-    constexpr static const char required_prefix[] = "usb-";
+    static constexpr const std::array<const char *const, 2> allowed_prefixes
+    {
+        "usb-",
+        "ata-",
+    };
 
-    if(strncmp(dev.get_display_name().c_str(),
-               required_prefix, sizeof(required_prefix) - 1) != 0)
-        return dev.reject();
+    for(const auto prefix : allowed_prefixes)
+    {
+        if(strncmp(dev.get_display_name().c_str(), prefix, strlen(prefix)) == 0)
+            return dev.accept();
+    }
 
-    dev.accept();
+    dev.reject();
 }
 
 /*!
