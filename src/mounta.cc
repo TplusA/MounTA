@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -35,7 +35,7 @@
 ssize_t (*os_read)(int fd, void *dest, size_t count) = read;
 ssize_t (*os_write)(int fd, const void *buf, size_t count) = write;
 
-struct parameters
+struct Parameters
 {
     bool run_in_foreground;
     bool connect_to_session_dbus;
@@ -65,16 +65,16 @@ static void log_version_info(void)
 /*!
  * Set up logging, daemonize.
  */
-static int setup(const struct parameters *parameters, GMainLoop **loop)
+static int setup(const Parameters &parameters, GMainLoop *&loop)
 {
-    *loop = NULL;
+    loop = NULL;
 
-    msg_enable_syslog(!parameters->run_in_foreground);
+    msg_enable_syslog(!parameters.run_in_foreground);
 
-    if(!parameters->run_in_foreground)
+    if(!parameters.run_in_foreground)
         openlog("mounta", LOG_PID, LOG_DAEMON);
 
-    if(!parameters->run_in_foreground)
+    if(!parameters.run_in_foreground)
     {
         if(daemon(0, 0) < 0)
         {
@@ -85,14 +85,14 @@ static int setup(const struct parameters *parameters, GMainLoop **loop)
 
     log_version_info();
 
-    *loop = g_main_loop_new(NULL, FALSE);
-    if(*loop == NULL)
+    loop = g_main_loop_new(NULL, FALSE);
+    if(loop == NULL)
     {
         msg_error(ENOMEM, LOG_EMERG, "Failed creating GLib main loop");
         return -1;
     }
 
-    osdev_init(parameters->blkid_tool, NULL);
+    osdev_init(parameters.blkid_tool, NULL);
 
     return 0;
 }
@@ -112,15 +112,14 @@ static void usage(const char *program_name)
         << std::endl;
 }
 
-static int process_command_line(int argc, char *argv[],
-                                struct parameters *parameters)
+static int process_command_line(int argc, char *argv[], Parameters &parameters)
 {
-    parameters->run_in_foreground = false;
-    parameters->connect_to_session_dbus = true;
-    parameters->mount_tool = "/usr/bin/sudo /bin/mount";
-    parameters->unmount_tool = "/usr/bin/sudo /bin/umount";
-    parameters->blkid_tool = "/usr/bin/sudo /sbin/blkid";
-    parameters->working_directory = "/run/MounTA";
+    parameters.run_in_foreground = false;
+    parameters.connect_to_session_dbus = true;
+    parameters.mount_tool = "/usr/bin/sudo /bin/mount";
+    parameters.unmount_tool = "/usr/bin/sudo /bin/umount";
+    parameters.blkid_tool = "/usr/bin/sudo /sbin/blkid";
+    parameters.working_directory = "/run/MounTA";
 
 #define CHECK_ARGUMENT() \
     do \
@@ -141,16 +140,16 @@ static int process_command_line(int argc, char *argv[],
         else if(strcmp(argv[i], "--version") == 0)
             return 2;
         else if(strcmp(argv[i], "--fg") == 0)
-            parameters->run_in_foreground = true;
+            parameters.run_in_foreground = true;
         else if(strcmp(argv[i], "--workdir") == 0)
         {
             CHECK_ARGUMENT();
-            parameters->working_directory = argv[i];
+            parameters.working_directory = argv[i];
         }
         else if(strcmp(argv[i], "--session-dbus") == 0)
-            parameters->connect_to_session_dbus = true;
+            parameters.connect_to_session_dbus = true;
         else if(strcmp(argv[i], "--system-dbus") == 0)
-            parameters->connect_to_session_dbus = false;
+            parameters.connect_to_session_dbus = false;
         else
         {
             std::cerr << "Unknown option \"" << argv[i]
@@ -166,21 +165,21 @@ static int process_command_line(int argc, char *argv[],
 
 static void handle_device_changes(FdEvents::EventType ev, const char *path, void *user_data)
 {
-    auto *data = static_cast<std::pair<Automounter::Core, GMainLoop *> *>(user_data);
+    auto &data = *static_cast<std::pair<Automounter::Core, GMainLoop *> *>(user_data);
 
     switch(ev)
     {
       case FdEvents::NEW_DEVICE:
-        data->first.handle_new_device(path);
+        data.first.handle_new_device(path);
         break;
 
       case FdEvents::DEVICE_GONE:
-        data->first.handle_removed_device(path);
+        data.first.handle_removed_device(path);
         break;
 
       case FdEvents::SHUTDOWN:
-        data->first.shutdown();
-        g_main_loop_quit(data->second);
+        data.first.shutdown();
+        g_main_loop_quit(data.second);
         break;
     }
 }
@@ -193,9 +192,9 @@ static gboolean handle_fd_event(gint fd, GIOCondition condition, gpointer user_d
 }
 
 static int setup_inotify_watch(FdEvents &ev, const char *path,
-                               std::pair<Automounter::Core, GMainLoop *> *data)
+                               std::pair<Automounter::Core, GMainLoop *> &data)
 {
-    int fd = ev.watch(path, handle_device_changes, data);
+    int fd = ev.watch(path, handle_device_changes, &data);
 
     if(fd < 0)
         return -1;
@@ -214,9 +213,9 @@ static gboolean signal_handler(gpointer user_data)
 
 int main(int argc, char *argv[])
 {
-    static struct parameters parameters;
+    static Parameters parameters;
 
-    int ret = process_command_line(argc, argv, &parameters);
+    int ret = process_command_line(argc, argv, parameters);
 
     if(ret == -1)
         return EXIT_FAILURE;
@@ -233,7 +232,7 @@ int main(int argc, char *argv[])
 
     static GMainLoop *loop = NULL;
 
-    if(setup(&parameters, &loop) < 0)
+    if(setup(parameters, loop) < 0)
         return EXIT_FAILURE;
 
     g_unix_signal_add(SIGINT, signal_handler, loop);
@@ -270,7 +269,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
 
     static FdEvents ev;
-    if(setup_inotify_watch(ev, "/dev/disk/by-id", &event_data) < 0)
+    if(setup_inotify_watch(ev, "/dev/disk/by-id", event_data) < 0)
         return EXIT_FAILURE;
 
     g_main_loop_run(loop);
