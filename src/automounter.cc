@@ -295,10 +295,8 @@ void Automounter::Core::handle_new_device(const char *device_path)
 }
 
 static void try_unmount_volume(Devices::Volume &vol,
-                               const Automounter::ExternalTools *tools)
+                               const Automounter::ExternalTools &tools)
 {
-    log_assert(tools != nullptr);
-
     switch(vol.get_state())
     {
       case Devices::Volume::PENDING:
@@ -311,7 +309,7 @@ static void try_unmount_volume(Devices::Volume &vol,
         /* fall-through */
 
       case Devices::Volume::MOUNTED:
-        do_unmount_volume(vol, *tools);
+        do_unmount_volume(vol, tools);
         break;
 
       case Devices::Volume::UNUSABLE:
@@ -334,7 +332,10 @@ void Automounter::Core::handle_removed_device(const char *device_path)
 
     devman_.remove_entry(device_path,
                          announce_device_removed,
-                         std::bind(try_unmount_volume, std::placeholders::_1, &tools_));
+                         [this] (Devices::Volume &volume)
+                         {
+                             try_unmount_volume(volume, tools_);
+                         });
 }
 
 static int remove_mountpoint_the_hard_way(const char *path,
@@ -357,8 +358,10 @@ void Automounter::Core::shutdown()
     /* Attempt to clean up the nice and polite way. */
     while(devman_.remove_entry(devman_.begin(),
                                nullptr,
-                               std::bind(try_unmount_volume,
-                                         std::placeholders::_1, &tools_)))
+                               [this] (Devices::Volume &volume)
+                               {
+                                   try_unmount_volume(volume, tools_);
+                               }))
         ;
 
     /* Remove residual mountpoints. There shouldn't be any, but we want to be
