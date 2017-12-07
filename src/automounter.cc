@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2016, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -337,7 +337,8 @@ void Automounter::Core::handle_removed_device(const char *device_path)
                          std::bind(try_unmount_volume, std::placeholders::_1, &tools_));
 }
 
-static void remove_mountpoint_the_hard_way(const char *path, void *user_data)
+static int remove_mountpoint_the_hard_way(const char *path,
+                                          unsigned char dtype, void *user_data)
 {
     const auto &tools = *reinterpret_cast<const Automounter::ExternalTools *>(user_data);
 
@@ -347,6 +348,8 @@ static void remove_mountpoint_the_hard_way(const char *path, void *user_data)
         msg_error(0, LOG_NOTICE, "Failed unmounting \"%s\" the hard way", path);
 
     (void)os_rmdir(path, true);
+
+    return 0;
 }
 
 void Automounter::Core::shutdown()

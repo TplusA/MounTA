@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -110,9 +110,11 @@ void Devices::Device::do_probe()
     osdev_free_device_information(&devinfo);
 }
 
-static void do_remove_mountpoint_directory(const char *path, void *user_data)
+static int do_remove_mountpoint_directory(const char *path,
+                                          unsigned char dtype, void *user_data)
 {
     (void)os_rmdir(path, *static_cast<bool *>(user_data));
+    return 0;
 }
 
 void Devices::Device::cleanup_fs(bool not_expecting_failure)
