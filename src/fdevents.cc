@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -20,7 +20,7 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include <cstring>
+#include <climits>
 #include <sys/inotify.h>
 
 #include "fdevents.hh"
@@ -60,24 +60,11 @@ FdEvents::~FdEvents()
     close_fd_and_wd(fd_, wd_);
 }
 
-bool FdEvents::init_path_buffer(const char *path)
+void FdEvents::init_path_buffer(const char *path)
 {
-    const size_t len = strlen(path);
-
-    if(len + 64 > sizeof(path_buffer_))
-        return false;
-
-    memcpy(path_buffer_, path, len);
-
-    path_suffix_ = path_buffer_ + len;
-    *path_suffix_++ = '/';
-    path_suffix_[0] = '\0';
-
-    path_suffix_max_chars_ = sizeof(path_buffer_) - (path_suffix_ - path_buffer_) - 1;
-
-    log_assert(path_suffix_max_chars_ > 0);
-
-    return true;
+    path_buffer_ = path;
+    path_buffer_ += '/';
+    path_buffer_prefix_length_ = path_buffer_.length();
 }
 
 int FdEvents::watch(const char *path,
@@ -88,11 +75,7 @@ int FdEvents::watch(const char *path,
 
     close_fd_and_wd(fd_, wd_);
 
-    if(!init_path_buffer(path))
-    {
-        msg_error(ENAMETOOLONG, LOG_CRIT, "Internal path buffer too small");
-        return -1;
-    }
+    init_path_buffer(path);
 
     fd_ = inotify_init1(IN_NONBLOCK);
 
@@ -152,19 +135,16 @@ static ssize_t try_fill_buffer(int fd, uint8_t (&event_buffer)[N])
 
 const char *FdEvents::path_from_event(const struct inotify_event *event)
 {
-    if(event->len > 0 && event->len <= path_suffix_max_chars_)
-    {
-        memcpy(path_suffix_, event->name, event->len + 1);
-        return path_buffer_;
-    }
+    path_buffer_.erase(path_buffer_prefix_length_);
 
     if(event->len > 0)
-        msg_error(ENAMETOOLONG, LOG_ERR,
-                  "Buffer too small for path \"%s\"", event->name);
-
-    path_suffix_[0] = '\0';
-
-    return nullptr;
+    {
+        std::copy(event->name, event->name + event->len,
+                  std::back_inserter(path_buffer_));
+        return path_buffer_.c_str();
+    }
+    else
+        return nullptr;
 }
 
 bool FdEvents::process()

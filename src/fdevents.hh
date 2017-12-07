@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -40,9 +40,8 @@ class FdEvents
     int fd_;
     int wd_;
 
-    char path_buffer_[1024];
-    char *path_suffix_;
-    size_t path_suffix_max_chars_;
+    std::string path_buffer_;
+    size_t path_buffer_prefix_length_;
 
     callback_type event_handler_;
     void *event_handler_user_data_;
@@ -54,12 +53,9 @@ class FdEvents
     explicit FdEvents():
         fd_(-1),
         wd_(-1),
-        path_suffix_(nullptr),
-        path_suffix_max_chars_(0),
+        path_buffer_prefix_length_(0),
         event_handler_user_data_(nullptr)
-    {
-        path_buffer_[0] = '\0';
-    }
+    {}
 
     ~FdEvents();
 
@@ -104,7 +100,7 @@ class FdEvents
     bool process();
 
   private:
-    bool init_path_buffer(const char *path);
+    void init_path_buffer(const char *path);
     const char *path_from_event(const struct inotify_event *event);
 };
 
