@@ -102,8 +102,7 @@ int FdEvents::watch(const char *path,
     return fd_;
 }
 
-template <size_t N>
-static ssize_t try_fill_buffer(int fd, uint8_t (&event_buffer)[N])
+static ssize_t try_fill_buffer(int fd, uint8_t *event_buffer, size_t buffer_size)
 {
     if(fd < 0)
     {
@@ -113,7 +112,7 @@ static ssize_t try_fill_buffer(int fd, uint8_t (&event_buffer)[N])
 
     ssize_t len;
 
-    while((len = read(fd, event_buffer, N)) < 0 &&
+    while((len = read(fd, event_buffer, buffer_size)) < 0 &&
           errno == EINTR)
         ;
 
@@ -149,10 +148,12 @@ const char *FdEvents::path_from_event(const struct inotify_event *event)
 
 bool FdEvents::process()
 {
-    uint8_t event_buffer[2048]
-        __attribute__ ((aligned(__alignof__(struct inotify_event))));
+    std::aligned_storage<sizeof(struct inotify_event) + NAME_MAX + 1,
+                         alignof(struct inotify_event)>::type aligned_event_buffer[16];
+    auto *const event_buffer = reinterpret_cast<uint8_t *>(aligned_event_buffer);
 
-    const ssize_t len = try_fill_buffer(fd_, event_buffer);
+    const ssize_t len =
+        try_fill_buffer(fd_, event_buffer, sizeof(aligned_event_buffer));
 
     if(len < 0)
     {
