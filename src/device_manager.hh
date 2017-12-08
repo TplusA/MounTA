@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -50,11 +50,11 @@ class AllDevices
     explicit AllDevices() {}
     ~AllDevices();
 
-    Device *new_entry(const char *devlink, Volume **volume);
+    Device *new_entry(const char *devlink, Volume *&volume);
 
-    const Device *new_entry(const char *devlink, const Volume **volume)
+    const Device *new_entry(const char *devlink, const Volume *&volume)
     {
-        return new_entry(devlink, const_cast<Devices::Volume **>(volume));
+        return new_entry(devlink, const_cast<Devices::Volume *&>(volume));
     }
 
     using RemoveDeviceCallback = std::function<void(Devices::Device &)>;

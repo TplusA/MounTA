@@ -126,12 +126,11 @@ Devices::Device *Devices::AllDevices::find_root_device(const char *devlink)
 }
 
 Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
-                                                Devices::Volume **volume)
+                                                Devices::Volume *&volume)
 {
     log_assert(devlink != nullptr);
 
-    if(volume != nullptr)
-        *volume = nullptr;
+    volume = nullptr;
 
     DevnameWithVolumeNumber data;
     if(!get_devname_with_volume_number(&data, devlink))
@@ -157,8 +156,7 @@ Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
             log_assert(device_and_volume.first == device ||
                        (device == nullptr && device_and_volume.first != nullptr));
 
-            if(volume != nullptr)
-                *volume = device_and_volume.second;
+            volume = device_and_volume.second;
 
             if(device == nullptr)
                 device = device_and_volume.first;
@@ -167,9 +165,7 @@ Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
     else if(device != nullptr && data.volume_number_ == 0)
     {
         device->probe();
-
-        if(volume != nullptr)
-            *volume = device->lookup_volume_by_devname(data.devname_);
+        volume = device->lookup_volume_by_devname(data.devname_);
     }
 
     if(have_volume_info)

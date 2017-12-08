@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -136,7 +136,7 @@ new_device_with_expectations(const DevNames &device_names,
         add_device_probe_expectations(device_names.device_identifier, &fake_device_info);
 
     const Devices::Volume *volume;
-    const Devices::Device *const dev = devs->new_entry(device_names.device_identifier, &volume);
+    const Devices::Device *const dev = devs->new_entry(device_names.device_identifier, volume);
 
     cppcut_assert_not_null(dev);
     cppcut_assert_equal(device_names.device_identifier, dev->get_devlink_name().c_str());
@@ -201,7 +201,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     mock_devices_os->expect_osdev_free_volume_information(&fake_info);
 
     const Devices::Volume *vol;
-    cppcut_assert_equal(expected_device, devs->new_entry(volume_names.device_identifier, &vol));
+    cppcut_assert_equal(expected_device, devs->new_entry(volume_names.device_identifier, vol));
     cppcut_assert_not_null(vol);
     cppcut_assert_equal(expected_device, vol->get_device());
     cppcut_assert_equal(volume_names.volume_label, vol->get_label().c_str());
@@ -230,7 +230,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     mock_devices_os->expect_osdev_free_volume_information(&fake_info);
 
     const Devices::Volume *vol;
-    ret_device = devs->new_entry(volume_names.device_identifier, &vol);
+    ret_device = devs->new_entry(volume_names.device_identifier, vol);
     cppcut_assert_not_null(vol);
     cppcut_assert_equal(volume_names.volume_label, vol->get_label().c_str());
     cppcut_assert_equal(volume_names.volume_fstype, vol->get_fstype().c_str());

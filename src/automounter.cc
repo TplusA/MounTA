@@ -107,34 +107,34 @@ static std::string ensure_mountpoint_directory(const std::string &wd,
     return "";
 }
 
-static void do_mount_volume(Devices::Volume *volume, const std::string &path,
+static void do_mount_volume(Devices::Volume &volume, const std::string &path,
                             const Automounter::ExternalTools &tools,
                             const Automounter::FSMountOptions &mount_options)
 {
-    log_assert(volume->get_state() == Devices::Volume::PENDING);
+    log_assert(volume.get_state() == Devices::Volume::PENDING);
 
     if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_NORMAL),
                            "%s %s %s %s %s",
                            tools.mount_.executable_.c_str(),
                            tools.mount_.options_.c_str(),
-                           mount_options.get_options(volume->get_fstype()),
-                           volume->get_device_name().c_str(), path.c_str()) == 0)
+                           mount_options.get_options(volume.get_fstype()),
+                           volume.get_device_name().c_str(), path.c_str()) == 0)
     {
-        volume->set_mounted(path);
+        volume.set_mounted(path);
 
         msg_info("Mounted %s to %s (USB hub %u, port %u)",
-                 volume->get_device_name().c_str(), path.c_str(),
-                 volume->get_device()->get_usb_hub_id(),
-                 volume->get_device()->get_usb_port());
+                 volume.get_device_name().c_str(), path.c_str(),
+                 volume.get_device()->get_usb_hub_id(),
+                 volume.get_device()->get_usb_port());
 
-        announce_new_volume(*volume);
+        announce_new_volume(volume);
     }
     else
     {
-        volume->set_unusable();
+        volume.set_unusable();
 
         msg_error(0, LOG_ERR, "Failed mounting %s to %s",
-                  volume->get_device_name().c_str(), path.c_str());
+                  volume.get_device_name().c_str(), path.c_str());
 
         /* we need to clean up after ourselves */
         (void)os_rmdir(path.c_str(), true);
@@ -211,7 +211,7 @@ void Automounter::Core::handle_new_device(const char *device_path)
     msg_info("New device: \"%s\"", device_path);
 
     Devices::Volume *vol;
-    auto *dev = devman_.new_entry(device_path, &vol);
+    auto *dev = devman_.new_entry(device_path, vol);
 
     if(dev == nullptr || vol == nullptr)
     {
@@ -291,7 +291,7 @@ void Automounter::Core::handle_new_device(const char *device_path)
      * None of the filters kicked in, so we'll try to mount the volume now.
      */
     if(!mountpoint_path.empty())
-        do_mount_volume(vol, mountpoint_path, tools_, mount_options_);
+        do_mount_volume(*vol, mountpoint_path, tools_, mount_options_);
     else
         vol->set_unusable();
 }
