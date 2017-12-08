@@ -113,7 +113,8 @@ static void do_mount_volume(Devices::Volume *volume, const std::string &path,
 {
     log_assert(volume->get_state() == Devices::Volume::PENDING);
 
-    if(os_system_formatted("%s %s %s %s %s",
+    if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_NORMAL),
+                           "%s %s %s %s %s",
                            tools.mount_.executable_.c_str(),
                            tools.mount_.options_.c_str(),
                            mount_options.get_options(volume->get_fstype()),
@@ -143,7 +144,8 @@ static void do_mount_volume(Devices::Volume *volume, const std::string &path,
 static bool do_unmount_path(const char *path,
                             const Automounter::ExternalTools &tools)
 {
-    return os_system_formatted("%s %s %s",
+    return os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_NORMAL),
+                               "%s %s %s",
                                tools.unmount_.executable_.c_str(),
                                tools.unmount_.options_.c_str(),
                                path);

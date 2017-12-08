@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -194,7 +194,8 @@ bool osdev_get_volume_information(const char *devname, struct osdev_volume_info 
 
     os_file_close(fd);
 
-    if(os_system_formatted("%s %s -o export %s >\"%s\"",
+    if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
+                           "%s %s -o export %s >\"%s\"",
                            osdev_blkid_details.cmd, osdev_blkid_details.opts,
                            devname, tempfile_name) < 0)
         return false;
