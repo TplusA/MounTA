@@ -114,7 +114,7 @@ get_device_iter_by_devlink(std::map<Devices::ID::value_type, Devices::Device *> 
     return std::find_if(devices.begin(), devices.end(),
         [&devlink] (std::remove_reference<decltype(devices)>::type::value_type &it)
         {
-            return strcmp(it.second->get_devlink_name().c_str(), devlink) == 0;
+            return it.second->get_devlink_name() == devlink;
         });
 }
 
@@ -319,7 +319,7 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
     }
 
     if(device == nullptr)
-        return std::pair<Devices::Device *, Devices::Volume *>(nullptr, nullptr);
+        return std::make_pair(nullptr, nullptr);
 
     auto *volume = device->lookup_volume_by_devname(devname);
 
@@ -327,7 +327,7 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
     {
         msg_info("Volume %s already registered on device %s",
                  devlink, device->get_devlink_name().c_str());
-        return std::pair<Devices::Device *, Devices::Volume *>(device, volume);
+        return std::make_pair(device, volume);
     }
 
     const char *label = ((volinfo.label != nullptr && volinfo.label[0] != '\0')
@@ -345,5 +345,5 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
         volume = nullptr;
     }
 
-    return std::pair<Devices::Device *, Devices::Volume *>(device, volume);
+    return std::make_pair(device, volume);
 }
