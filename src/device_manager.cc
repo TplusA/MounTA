@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -21,6 +21,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <cstring>
+#include <memory>
 #include <functional>
 #include <algorithm>
 #include <type_traits>
@@ -42,20 +43,15 @@ Devices::ID::value_type Devices::ID::next_free_id_;
 
 struct DevnameWithVolumeNumber
 {
-    char *devname_mem_;
+    std::unique_ptr<char, decltype(std::free) *> devname_mem_;
     const char *devname_;
     int volume_number_;
 
-    constexpr explicit DevnameWithVolumeNumber():
-        devname_mem_(nullptr),
+    explicit DevnameWithVolumeNumber():
+        devname_mem_{nullptr, std::free},
         devname_(nullptr),
         volume_number_(-1)
     {}
-
-    ~DevnameWithVolumeNumber()
-    {
-        free(devname_mem_);
-    }
 };
 
 /*!
@@ -64,8 +60,8 @@ struct DevnameWithVolumeNumber
 static bool get_devname_with_volume_number(DevnameWithVolumeNumber *data,
                                            const char *devlink)
 {
-    data->devname_mem_ = os_resolve_symlink(devlink);
-    data->devname_ = (data->devname_mem_ != nullptr) ? data->devname_mem_ : devlink;
+    data->devname_mem_.reset(os_resolve_symlink(devlink));
+    data->devname_ = (data->devname_mem_ != nullptr) ? data->devname_mem_.get() : devlink;
     data->volume_number_ = devname_get_volume_number(data->devname_);
 
     return data->volume_number_ >= 0;
