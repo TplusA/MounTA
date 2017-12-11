@@ -72,13 +72,12 @@ void Devices::Device::set_working_directory(const std::string &path)
     mountpoint_container_path_ = path;
 }
 
-void Devices::Device::probe()
+bool Devices::Device::probe()
 {
-    if(state_ == SYNTHETIC)
-        return do_probe();
+    return state_ == SYNTHETIC ? do_probe() : false;
 }
 
-void Devices::Device::do_probe()
+bool Devices::Device::do_probe()
 {
     log_assert(state_ == SYNTHETIC);
 
@@ -91,8 +90,10 @@ void Devices::Device::do_probe()
        !osdev_get_device_information(devlink_name_.c_str(), &devinfo))
     {
         state_ = BROKEN;
-        return;
+        return false;
     }
+
+    bool result = false;
 
     switch(devinfo.type)
     {
@@ -104,10 +105,13 @@ void Devices::Device::do_probe()
         root_hub_id_ = Devices::USBHubID(devinfo.usb.hub_id);
         hub_port_ = devinfo.usb.port;
         state_ = PROBED;
+        result = true;
         break;
     }
 
     osdev_free_device_information(&devinfo);
+
+    return result;
 }
 
 static int do_remove_mountpoint_directory(const char *path,

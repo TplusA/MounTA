@@ -50,11 +50,14 @@ class AllDevices
     explicit AllDevices() {}
     ~AllDevices();
 
-    Device *new_entry(const char *devlink, Volume *&volume);
+    Device *new_entry(const char *devlink, Volume *&volume,
+                      bool &have_probed_containing_device);
 
-    const Device *new_entry(const char *devlink, const Volume *&volume)
+    const Device *new_entry(const char *devlink, const Volume *&volume,
+                            bool &have_probed_containing_device)
     {
-        return new_entry(devlink, const_cast<Devices::Volume *&>(volume));
+        return new_entry(devlink, const_cast<Devices::Volume *&>(volume),
+                         have_probed_containing_device);
     }
 
     using RemoveDeviceCallback = std::function<void(Devices::Device &)>;
@@ -75,7 +78,8 @@ class AllDevices
   private:
     Device *add_or_get_device(const char *devlink, const char *devname,
                               struct osdev_volume_info &volinfo,
-                              bool &have_info);
+                              bool &have_info,
+                              bool &have_probed_containing_device);
 
     Device *find_root_device(const char *devlink);
     Device *get_device_by_devlink(const char *devlink);

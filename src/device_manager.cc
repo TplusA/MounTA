@@ -126,11 +126,13 @@ Devices::Device *Devices::AllDevices::find_root_device(const char *devlink)
 }
 
 Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
-                                                Devices::Volume *&volume)
+                                                Devices::Volume *&volume,
+                                                bool &have_probed_containing_device)
 {
     log_assert(devlink != nullptr);
 
     volume = nullptr;
+    have_probed_containing_device = false;
 
     DevnameWithVolumeNumber data;
     if(!get_devname_with_volume_number(&data, devlink))
@@ -141,7 +143,8 @@ Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
 
     Device *device =
         (data.volume_number_ == 0)
-        ? add_or_get_device(devlink, data.devname_, volinfo, have_volume_info)
+        ? add_or_get_device(devlink, data.devname_, volinfo, have_volume_info,
+                            have_probed_containing_device)
         : find_root_device(devlink);
 
     if(data.volume_number_ > 0 || have_volume_info)
@@ -164,7 +167,9 @@ Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
     }
     else if(device != nullptr && data.volume_number_ == 0)
     {
-        device->probe();
+        if(!have_probed_containing_device)
+            have_probed_containing_device = device->probe();
+
         volume = device->lookup_volume_by_devname(data.devname_);
     }
 
@@ -277,7 +282,8 @@ Devices::Device *
 Devices::AllDevices::add_or_get_device(const char *devlink,
                                        const char *devname,
                                        struct osdev_volume_info &volinfo,
-                                       bool &have_info)
+                                       bool &have_info,
+                                       bool &have_probed_containing_device)
 {
     have_info = false;
 
@@ -294,9 +300,12 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
     have_info = osdev_get_volume_information(devname, &volinfo);
 
     return mk_device(devices_,
-        [&devlink] (const Devices::ID &device_id)
+        [&devlink, &have_probed_containing_device]
+        (const Devices::ID &device_id)
         {
-            return new Devices::Device(device_id, devlink, true);
+            auto *d = new Devices::Device(device_id, devlink, true);
+            have_probed_containing_device = d->get_state() == Device::State::PROBED;
+            return d;
         });
 }
 

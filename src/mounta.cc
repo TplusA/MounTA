@@ -205,6 +205,23 @@ static int setup_inotify_watch(FdEvents &ev, const char *path,
     return 0;
 }
 
+using CollectDevicesData =
+    std::pair<std::pair<Automounter::Core, GMainLoop *> &, const char *const>;
+
+static int collect_devices(const char *path, unsigned char dtype,
+                           void *user_data)
+{
+    auto &data = *static_cast<CollectDevicesData *>(user_data);
+
+    std::string full_path(data.second);
+    full_path += '/';
+    full_path += path;
+
+    handle_device_changes(FdEvents::NEW_DEVICE, full_path.c_str(), &data.first);
+
+    return 0;
+}
+
 static gboolean signal_handler(gpointer user_data)
 {
     g_main_loop_quit(static_cast<GMainLoop *>(user_data));
@@ -268,10 +285,27 @@ int main(int argc, char *argv[])
     if(dbus_setup(loop, parameters.connect_to_session_dbus, &event_data.first) < 0)
         return EXIT_FAILURE;
 
+    static const char watched_directory[] = "/dev/disk/by-id";
+
+    /* install inotify watch first to make sure are not losing anything */
     static FdEvents ev;
-    if(setup_inotify_watch(ev, "/dev/disk/by-id", event_data) < 0)
+    if(setup_inotify_watch(ev, watched_directory, event_data) < 0)
         return EXIT_FAILURE;
 
+    /* after the inotify watch has been installed, we check the directory of
+     * block devices for entries which have already there when we were started;
+     * we are not going to lose any inotify events, but events may occur while
+     * the directory is inspected, possibly leading to events for entries we've
+     * already seen */
+    {
+        CollectDevicesData data(std::ref(event_data), watched_directory);
+
+        if(os_foreach_in_path(watched_directory, collect_devices, &data) < 0)
+            return EXIT_FAILURE;
+    }
+
+    /* any inotify events already received from kernel, if any, will be
+     * processed within a GLib main loop */
     g_main_loop_run(loop);
 
     msg_info("Shutting down");

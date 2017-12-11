@@ -83,16 +83,6 @@ static std::string ensure_mountpoint_directory(const std::string &wd,
 {
     const auto *dev = volume.get_device();
 
-    if(dev->get_working_directory().empty())
-    {
-        std::ostringstream os;
-
-        os << wd << '/' << volume.get_device()->get_id();
-
-        if(os_mkdir_hierarchy(os.str().c_str(), true))
-            volume.set_device_working_dir(os.str());
-    }
-
     if(volume.get_state() == Devices::Volume::PENDING &&
        !dev->get_working_directory().empty())
     {
@@ -100,7 +90,7 @@ static std::string ensure_mountpoint_directory(const std::string &wd,
 
         os << dev->get_working_directory() << '/' << volume.get_index();
 
-        if(os_mkdir(os.str().c_str(), true))
+        if(os_mkdir_hierarchy(os.str().c_str(), true))
             return os.str();
     }
 
@@ -204,51 +194,12 @@ static void apply_volume_filter(Devices::Volume &vol)
     log_assert(vol.get_state() == Devices::Volume::PENDING);
 }
 
-void Automounter::Core::handle_new_device(const char *device_path)
+static void try_mount_volume(Devices::Volume &vol, const Devices::Device &dev,
+                             const std::string &working_directory,
+                             const Automounter::ExternalTools &tools,
+                             const Automounter::FSMountOptions &mount_options)
 {
-    log_assert(device_path != nullptr);
-
-    msg_info("New device: \"%s\"", device_path);
-
-    Devices::Volume *vol;
-    auto *dev = devman_.new_entry(device_path, vol);
-
-    if(dev == nullptr || vol == nullptr)
-    {
-        if(dev == nullptr)
-            msg_error(0, LOG_NOTICE, "Failed using device %s", device_path);
-
-        return;
-    }
-
-    bool is_device_announcement_needed = false;
-
-    switch(dev->get_state())
-    {
-      case Devices::Device::SYNTHETIC:
-        /* handled later when the device is really available */
-        return;
-
-      case Devices::Device::BROKEN:
-      case Devices::Device::REJECTED:
-        /* don't care about it anymore */
-        return;
-
-      case Devices::Device::PROBED:
-        apply_device_filter(*dev);
-
-        if(dev->get_state() != Devices::Device::OK)
-            return;
-
-        is_device_announcement_needed = true;
-
-        /* fall-through */
-
-      case Devices::Device::OK:
-        break;
-    }
-
-    switch(vol->get_state())
+    switch(vol.get_state())
     {
       case Devices::Volume::PENDING:
         /* try to mount below */
@@ -277,23 +228,97 @@ void Automounter::Core::handle_new_device(const char *device_path)
      * the device, but not the filtered volumes. If all available volumes are
      * filtered, then the device will still be visible, but appear empty.
      */
-    apply_volume_filter(*vol);
+    apply_volume_filter(vol);
 
-    const std::string mountpoint_path(ensure_mountpoint_directory(working_directory_, *vol));
+    const std::string mountpoint_path(ensure_mountpoint_directory(working_directory, vol));
 
-    if(is_device_announcement_needed)
-        announce_new_device(*dev);
-
-    if(vol->get_state() != Devices::Volume::PENDING)
+    if(vol.get_state() != Devices::Volume::PENDING)
         return;
 
     /*
      * None of the filters kicked in, so we'll try to mount the volume now.
      */
     if(!mountpoint_path.empty())
-        do_mount_volume(*vol, mountpoint_path, tools_, mount_options_);
+        do_mount_volume(vol, mountpoint_path, tools, mount_options);
     else
-        vol->set_unusable();
+        vol.set_unusable();
+}
+
+static void mount_all_pending_volumes(Devices::Device &dev,
+                                      const std::string &working_directory,
+                                      const Automounter::ExternalTools &tools,
+                                      const Automounter::FSMountOptions &mount_options)
+{
+    for(const auto &volinfo : dev)
+    {
+        if(volinfo.second == nullptr)
+            continue;
+
+        if(volinfo.second->get_state() == Devices::Volume::PENDING)
+            try_mount_volume(*volinfo.second, dev, working_directory,
+                             tools, mount_options);
+    }
+}
+
+void Automounter::Core::handle_new_device(const char *device_path)
+{
+    log_assert(device_path != nullptr);
+
+    msg_info("New device: \"%s\"", device_path);
+
+    Devices::Volume *vol;
+    bool have_probed_dev;
+    auto *dev = devman_.new_entry(device_path, vol, have_probed_dev);
+
+    if(dev == nullptr || vol == nullptr)
+    {
+        if(dev == nullptr)
+            msg_error(0, LOG_NOTICE, "Failed using device %s", device_path);
+
+        if(dev == nullptr || dev->empty())
+            return;
+    }
+
+    log_assert(dev != nullptr);
+
+    switch(dev->get_state())
+    {
+      case Devices::Device::SYNTHETIC:
+        /* handled later when the device is really available */
+        return;
+
+      case Devices::Device::BROKEN:
+      case Devices::Device::REJECTED:
+        /* don't care about it anymore */
+        return;
+
+      case Devices::Device::PROBED:
+        apply_device_filter(*dev);
+
+        if(dev->get_state() != Devices::Device::OK)
+            return;
+
+        /* fall-through */
+
+      case Devices::Device::OK:
+        break;
+    }
+
+    if(have_probed_dev)
+    {
+        std::ostringstream os;
+        os << working_directory_ << '/' << dev->get_id();
+        dev->set_working_directory(os.str());
+
+        announce_new_device(*dev);
+    }
+
+    if(have_probed_dev)
+        mount_all_pending_volumes(*dev, working_directory_,
+                                  tools_, mount_options_);
+    else if(vol != nullptr)
+        try_mount_volume(*vol, *dev, working_directory_,
+                         tools_, mount_options_);
 }
 
 static void try_unmount_volume(Devices::Volume &vol,
