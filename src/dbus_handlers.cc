@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -52,7 +52,7 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
                               "(qss(uu))",
                               device.get_id(),
                               device.get_display_name().c_str(),
-                              device.get_working_directory().c_str(),
+                              device.get_working_directory().str().c_str(),
                               device.get_usb_hub_id(), device.get_usb_port());
 
         for(const auto &volume_iter : device)
@@ -67,7 +67,7 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
                                   "(ussq)",
                                   volume.get_index() >= 0 ? volume.get_index() : UINT_MAX,
                                   volume.get_label().c_str(),
-                                  volume.get_mountpoint().c_str(),
+                                  volume.get_mountpoint_name().c_str(),
                                   volume.get_device()->get_id());
         }
     }

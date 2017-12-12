@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+# Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
 #
 # This file is part of MounTA.
 #
@@ -26,6 +26,7 @@ mounta_SOURCES = \
     devices_os.h devices_os.c \
     fdevents.hh fdevents.cc \
     automounter.hh automounter.cc \
+    autodir.hh external_tools.hh \
     dbus_iface.c dbus_iface.h dbus_iface_deep.h \
     dbus_handlers.cc dbus_handlers.h \
     os.c os.h
@@ -50,7 +51,8 @@ libmounta_dbus_la_CFLAGS = $(CRELAXEDWARNINGS)
 libdevice_manager_la_SOURCES = \
     device_manager.hh device_manager.cc \
     devices.hh devices.cc \
-    devices_util.h devices_util.c
+    devices_util.h devices_util.c \
+    autodir.cc autodir.hh
 libdevice_manager_la_CFLAGS = $(AM_CFLAGS)
 libdevice_manager_la_CXXFLAGS = $(AM_CXXFLAGS)
 

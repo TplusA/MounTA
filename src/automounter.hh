@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -26,6 +26,8 @@
 
 namespace Automounter
 {
+
+class ExternalTools;
 
 class FSMountOptions
 {
@@ -64,44 +66,10 @@ class FSMountOptions
     const char *get_options(const std::string &fstype) const;
 };
 
-class ExternalTools
-{
-  public:
-    class Command
-    {
-      public:
-        const std::string executable_;
-        const std::string options_;
-
-        Command(const Command &) = delete;
-        Command &operator=(const Command &) = delete;
-        Command(Command &&) = default;
-
-        explicit Command(const char *executable, const char *options):
-            executable_(executable),
-            options_(options != nullptr ? options : "")
-        {}
-    };
-
-    const Command mount_;
-    const Command unmount_;
-
-    ExternalTools(const ExternalTools &) = delete;
-    ExternalTools &operator=(const ExternalTools &) = delete;
-    ExternalTools(ExternalTools &&) = default;
-
-    explicit ExternalTools(const char *mount,   const char *mount_default_options,
-                           const char *unmount, const char *unmount_default_options):
-        mount_(mount,     mount_default_options),
-        unmount_(unmount, unmount_default_options)
-    {}
-};
-
 class Core
 {
   private:
     const std::string working_directory_;
-    const ExternalTools &tools_;
     const FSMountOptions &mount_options_;
     Devices::AllDevices devman_;
 
@@ -113,8 +81,8 @@ class Core
     explicit Core(const char *working_directory, const ExternalTools &tools,
                   const FSMountOptions &mount_options):
         working_directory_(working_directory),
-        tools_(tools),
-        mount_options_(mount_options)
+        mount_options_(mount_options),
+        devman_(tools)
     {}
 
     void handle_new_device(const char *device_path);
@@ -124,7 +92,7 @@ class Core
     class const_iterator
     {
       private:
-        std::map<Devices::ID::value_type, Devices::Device *>::const_iterator dev_iter_;
+        Devices::AllDevices::DevContainerType::const_iterator dev_iter_;
 
       public:
         explicit constexpr const_iterator(decltype(dev_iter_) &&dev_iter):

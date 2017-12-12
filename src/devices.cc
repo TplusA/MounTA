@@ -22,19 +22,41 @@
 
 #include <algorithm>
 #include <cstring>
+#include <sstream>
+#include <dirent.h>
 
 #include "devices.hh"
 #include "devices_os.h"
+#include "automounter.hh"
 #include "messages.h"
+
+static int do_remove_residual_directories(const char *path,
+                                          unsigned char dtype, void *user_data)
+{
+    if(dtype == DT_DIR)
+    {
+        const auto &amdir(*static_cast<const Automounter::Directory *>(user_data));
+        auto temp(amdir.str() + '/' + path);
+        msg_error(0, LOG_NOTICE, "Removing residual directory \"%s\"", temp.c_str());
+        (void)os_rmdir(temp.c_str(), true);
+    }
+    else
+        msg_error(0, LOG_ERR,
+                  "Found unexpected directory entry: \"%s\"", path);
+
+    return 0;
+}
 
 Devices::Device::~Device()
 {
-    for(auto vol : volumes_)
-        delete vol.second;
-
+    /* we need to destroy all volumes first so that our mountpoint directory
+     * becomes empty */
     volumes_.clear();
 
-    cleanup_fs(false);
+    if(mountpoint_container_path_.exists())
+        os_foreach_in_path(mountpoint_container_path_.str().c_str(),
+                           do_remove_residual_directories,
+                           &mountpoint_container_path_);
 }
 
 Devices::Volume *
@@ -49,12 +71,13 @@ Devices::Device::lookup_volume_by_devname(const char *devname) const
                 return strcmp(it.second->get_device_name().c_str(), devname) == 0;
             });
 
-    return (vol != volumes_.end()) ? vol->second : nullptr;
+    return (vol != volumes_.end()) ? vol->second.get() : nullptr;
 }
 
-bool Devices::Device::add_volume(Devices::Volume &volume)
+bool Devices::Device::add_volume(std::unique_ptr<Devices::Volume> &&volume)
 {
-    auto result = volumes_.insert(std::make_pair(volume.get_index(), &volume));
+    auto idx = volume->get_index();
+    auto result = volumes_.insert(std::make_pair(idx, std::move(volume)));
 
     if(!result.second)
         BUG("Insertion of volume failed");
@@ -62,14 +85,26 @@ bool Devices::Device::add_volume(Devices::Volume &volume)
     return result.second;
 }
 
-void Devices::Device::set_working_directory(const std::string &path)
+void Devices::Device::drop_volumes()
 {
-    if(!mountpoint_container_path_.empty())
-        BUG("Overwriting device mountpoint container");
+    volumes_.clear();
+}
 
+bool Devices::Device::mk_working_directory(std::string &&path)
+{
+    log_assert(!path.empty());
     log_assert(state_ == OK);
 
-    mountpoint_container_path_ = path;
+    if(mountpoint_container_path_.exists())
+        BUG("Overwriting device mountpoint container");
+
+    if(path == mountpoint_container_path_.str())
+        return true;
+    else
+    {
+        mountpoint_container_path_ = std::move(Automounter::Directory(std::move(path)));
+        return mountpoint_container_path_.create();
+    }
 }
 
 bool Devices::Device::probe()
@@ -114,33 +149,28 @@ bool Devices::Device::do_probe()
     return result;
 }
 
-static int do_remove_mountpoint_directory(const char *path,
-                                          unsigned char dtype, void *user_data)
+bool Devices::Volume::mk_mountpoint_directory()
 {
-    (void)os_rmdir(path, *static_cast<bool *>(user_data));
-    return 0;
+    if(containing_device_ == nullptr)
+        return false;
+
+    std::ostringstream os;
+    os << containing_device_->get_working_directory().str() << '/' << index_;
+
+    mountpoint_.set(std::move(os.str()));
+
+    return mountpoint_.create();
 }
 
-void Devices::Device::cleanup_fs(bool not_expecting_failure)
+bool Devices::Volume::mount(const Automounter::FSMountOptions &mount_options)
 {
-    if(mountpoint_container_path_.empty())
-        return;
-
-    os_foreach_in_path(mountpoint_container_path_.c_str(),
-                       do_remove_mountpoint_directory, &not_expecting_failure);
-    (void)os_rmdir(mountpoint_container_path_.c_str(), not_expecting_failure);
-
-    mountpoint_container_path_.clear();
+    return mountpoint_.mount(devname_,
+                             mount_options.get_options(fstype_));
 }
 
-void Devices::Volume::set_mounted(const std::string &path)
+void Devices::Volume::set_mounted()
 {
-    if(!mountpoint_path_.empty())
-        BUG("Overwriting volume mountpoint path");
-
     log_assert(state_ == PENDING);
-
-    mountpoint_path_ = path;
     state_ = MOUNTED;
 }
 
@@ -162,10 +192,5 @@ void Devices::Volume::set_eol_state_and_cleanup(State state,
                                                 bool not_expecting_failure)
 {
     state_ = state;
-
-    if(!mountpoint_path_.empty())
-    {
-        (void)os_rmdir(mountpoint_path_.c_str(), not_expecting_failure);
-        mountpoint_path_.clear();
-    }
+    mountpoint_.cleanup();
 }

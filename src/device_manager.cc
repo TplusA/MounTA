@@ -33,9 +33,6 @@
 
 Devices::AllDevices::~AllDevices()
 {
-    for(auto dev : devices_)
-        delete dev.second;
-
     devices_.clear();
 }
 
@@ -106,28 +103,27 @@ const std::string mk_root_devlink_name(const char *devlink)
     return "";
 }
 
-static inline auto
-get_device_iter_by_devlink(std::map<Devices::ID::value_type, Devices::Device *> &devices,
+static inline Devices::AllDevices::DevContainerType::iterator
+get_device_iter_by_devlink(Devices::AllDevices::DevContainerType &devices,
                            const char *devlink)
-    -> std::remove_reference<decltype(devices)>::type::iterator
 {
     return std::find_if(devices.begin(), devices.end(),
-        [&devlink] (std::remove_reference<decltype(devices)>::type::value_type &it)
+        [&devlink] (Devices::AllDevices::DevContainerType::value_type &it)
         {
             return it.second->get_devlink_name() == devlink;
         });
 }
 
-Devices::Device *Devices::AllDevices::find_root_device(const char *devlink)
+std::shared_ptr<Devices::Device> Devices::AllDevices::find_root_device(const char *devlink)
 {
     const std::string temp(mk_root_devlink_name(devlink));
     const auto &dev = get_device_iter_by_devlink(devices_, temp.c_str());
     return (dev != devices_.end()) ? dev->second : nullptr;
 }
 
-Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
-                                                Devices::Volume *&volume,
-                                                bool &have_probed_containing_device)
+std::shared_ptr<Devices::Device>
+Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
+                               bool &have_probed_containing_device)
 {
     log_assert(devlink != nullptr);
 
@@ -141,7 +137,7 @@ Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
     struct osdev_volume_info volinfo;
     bool have_volume_info = false;
 
-    Device *device =
+    std::shared_ptr<Device> device =
         (data.volume_number_ == 0)
         ? add_or_get_device(devlink, data.devname_, volinfo, have_volume_info,
                             have_probed_containing_device)
@@ -180,68 +176,37 @@ Devices::Device *Devices::AllDevices::new_entry(const char *devlink,
 }
 
 bool Devices::AllDevices::remove_entry(const char *devlink,
-                                       const Devices::AllDevices::RemoveDeviceCallback &remove_device,
-                                       const Devices::AllDevices::RemoveVolumeCallback &remove_volume)
+                                       const std::function<void(const Device &)> &removal_notification)
 {
     log_assert(devlink != nullptr);
-
     return remove_entry(get_device_iter_by_devlink(devices_, devlink),
-                        remove_device, remove_volume);
+                        removal_notification);
 }
 
-bool Devices::AllDevices::remove_entry(decltype(devices_)::const_iterator devices_iter,
-                                       const Devices::AllDevices::RemoveDeviceCallback &remove_device,
-                                       const Devices::AllDevices::RemoveVolumeCallback &remove_volume)
+bool Devices::AllDevices::remove_entry(Devices::AllDevices::DevContainerType::const_iterator devices_iter,
+                                       const std::function<void(const Device &)> &removal_notification)
 {
     if(devices_iter == devices_.end())
     {
-        /*!
-         * BUG: Could leak mountpoint directories here.
-         *
-         * Situation:
-         *     Assume there is a block device named ADev mounted to ADir, maybe
-         *     even mounted there by us. Then our daemon dies for some reason
-         *     (crash, killed by package manager, whatever). On startup, we try
-         *     to unmount all mounts in our working directory, but this may
-         *     fail if some process has a file open in ADir. Later still,
-         *     device ADev may get pulled by the user, so we'll see an unplug
-         *     event for a device we don't know at this exact point in code.
-         *     Directory ADir will be left around in this case.
-         *
-         * We should try to find a directory that matches the device name, make
-         * sure the directory is not associated with some volume object and
-         * that nothing is mounted there, then remove it.
-         */
+        /* react only on removal of whole devices */
         return false;
     }
 
-    Devices::Device *device = devices_iter->second;
+    devices_iter->second->drop_volumes();
 
-    if(remove_volume != nullptr)
-    {
-        for(auto &vol_it : *device)
-        {
-            log_assert(vol_it.second != nullptr);
-            remove_volume(*vol_it.second);
-        }
-    }
-
-    if(remove_device != nullptr)
-        remove_device(*device);
+    if(removal_notification != nullptr)
+        removal_notification(*devices_iter->second);
 
     devices_.erase(devices_iter);
-
-    log_assert(device != nullptr);
-    delete device;
 
     return true;
 }
 
-static Devices::Device *
-mk_device(std::map<Devices::ID::value_type, Devices::Device *> &all_devices,
-          const std::function<Devices::Device *(const Devices::ID &device_id)> &alloc_device)
+static std::shared_ptr<Devices::Device>
+mk_device(Devices::AllDevices::DevContainerType &all_devices,
+          const std::function<std::shared_ptr<Devices::Device>(const Devices::ID &device_id)> &alloc_device)
 {
-    Devices::Device *device = nullptr;
+    std::shared_ptr<Devices::Device> device;
 
     while(true)
     {
@@ -261,7 +226,6 @@ mk_device(std::map<Devices::ID::value_type, Devices::Device *> &all_devices,
         if(!result.second)
         {
             BUG("Insertion of device failed");
-            delete device;
             device = nullptr;
         }
     }
@@ -271,14 +235,14 @@ mk_device(std::map<Devices::ID::value_type, Devices::Device *> &all_devices,
     return device;
 }
 
-Devices::Device *
+std::shared_ptr<Devices::Device>
 Devices::AllDevices::get_device_by_devlink(const char *devlink)
 {
     const auto &dev = get_device_iter_by_devlink(devices_, devlink);
     return (dev != devices_.end()) ? dev->second : nullptr;
 }
 
-Devices::Device *
+std::shared_ptr<Devices::Device>
 Devices::AllDevices::add_or_get_device(const char *devlink,
                                        const char *devname,
                                        struct osdev_volume_info &volinfo,
@@ -288,7 +252,7 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
     have_info = false;
 
     /* full device */
-    auto *dev = get_device_by_devlink(devlink);
+    auto dev = get_device_by_devlink(devlink);
 
     if(dev != nullptr)
     {
@@ -300,17 +264,18 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
     have_info = osdev_get_volume_information(devname, &volinfo);
 
     return mk_device(devices_,
-        [&devlink, &have_probed_containing_device]
+        [this, &devlink, &have_probed_containing_device]
         (const Devices::ID &device_id)
         {
-            auto *d = new Devices::Device(device_id, devlink, true);
+            auto d = std::make_shared<Devices::Device>(device_id, devlink,
+                                                       true, tools_);
             have_probed_containing_device = d->get_state() == Device::State::PROBED;
             return d;
         });
 }
 
-std::pair<Devices::Device *, Devices::Volume *>
-Devices::AllDevices::add_or_get_volume(Devices::Device *device,
+std::pair<std::shared_ptr<Devices::Device>, Devices::Volume *>
+Devices::AllDevices::add_or_get_volume(std::shared_ptr<Devices::Device> device,
                                        const char *devlink,
                                        const char *devname,
                                        const struct osdev_volume_info &volinfo)
@@ -319,40 +284,44 @@ Devices::AllDevices::add_or_get_volume(Devices::Device *device,
     if(device == nullptr)
     {
         device = mk_device(devices_,
-            [&devlink] (const Devices::ID &device_id)
+            [this, &devlink] (const Devices::ID &device_id)
             {
-                return new Devices::Device(device_id,
-                                           mk_root_devlink_name(devlink),
-                                           false);
+                return std::make_shared<Devices::Device>(device_id,
+                                                         mk_root_devlink_name(devlink),
+                                                         false, tools_);
             });
     }
 
     if(device == nullptr)
         return std::make_pair(nullptr, nullptr);
 
-    auto *volume = device->lookup_volume_by_devname(devname);
+    auto *existing_volume = device->lookup_volume_by_devname(devname);
 
-    if(volume != nullptr)
+    if(existing_volume != nullptr)
     {
         msg_info("Volume %s already registered on device %s",
                  devlink, device->get_devlink_name().c_str());
-        return std::make_pair(device, volume);
+        return std::make_pair(device, existing_volume);
     }
 
     const char *label = ((volinfo.label != nullptr && volinfo.label[0] != '\0')
                          ? volinfo.label
                          : volinfo.fstype);
 
-    volume = new Devices::Volume(*device, volinfo.idx,
-                                 label, volinfo.fstype, devname);
+    auto volume = std::unique_ptr<Devices::Volume>(
+                        new Devices::Volume(device, volinfo.idx,
+                                            label, volinfo.fstype, devname,
+                                            tools_));
+
+    existing_volume = volume.get();
 
     if(volume == nullptr)
-        msg_out_of_memory("Volume object");
-    else if(!device->add_volume(*volume))
     {
-        delete volume;
-        volume = nullptr;
+        msg_out_of_memory("Volume object");
+        existing_volume = nullptr;
     }
+    else if(!device->add_volume(std::move(volume)))
+        existing_volume = nullptr;
 
-    return std::make_pair(device, volume);
+    return std::make_pair(device, existing_volume);
 }

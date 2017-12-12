@@ -19,8 +19,14 @@
 #ifndef DEVICES_HH
 #define DEVICES_HH
 
+#include <memory>
 #include <string>
 #include <map>
+
+#include "autodir.hh"
+#include "messages.h"
+
+namespace Automounter { class FSMountOptions; }
 
 namespace Devices
 {
@@ -146,12 +152,12 @@ class Device
     /*!
      * Where the mountpoints for this device will be created.
      */
-    std::string mountpoint_container_path_;
+    Automounter::Directory mountpoint_container_path_;
 
     /*!
      * All volumes on this device, indexed by volume index (partition number).
      */
-    std::map<int, Volume *> volumes_;
+    std::map<int, std::unique_ptr<Volume>> volumes_;
 
     /*!
      * Whether or not this structure was created because a volume was found.
@@ -197,7 +203,8 @@ class Device
     Device(const Device &) = delete;
     Device &operator=(const Device &) = delete;
 
-    explicit Device(ID device_id, const std::string &devlink, bool is_real):
+    explicit Device(ID device_id, const std::string &devlink, bool is_real,
+                    const Automounter::ExternalTools &tools):
         id_(device_id),
         devlink_name_(devlink),
         state_(SYNTHETIC),
@@ -223,10 +230,11 @@ class Device
     bool probe();
 
     Volume *lookup_volume_by_devname(const char *devname) const;
-    bool add_volume(Volume &volume);
+    bool add_volume(std::unique_ptr<Devices::Volume> &&volume);
+    void drop_volumes();
 
-    const std::string &get_working_directory() const { return mountpoint_container_path_; }
-    void set_working_directory(const std::string &path);
+    const Automounter::Directory &get_working_directory() const { return mountpoint_container_path_; }
+    bool mk_working_directory(std::string &&path);
 
     bool empty() const { return volumes_.empty(); }
     decltype(volumes_)::const_iterator begin() const { return volumes_.begin(); };
@@ -258,7 +266,7 @@ class Volume
     /*!
      * Which device this volume is stored on.
      */
-    Device &containing_device_;
+    std::shared_ptr<Device> containing_device_;
 
     /*!
      * Number of the volume on its containing device.
@@ -300,28 +308,26 @@ class Volume
     /*!
      * Full path to this volume's mountpoint.
      */
-    std::string mountpoint_path_;
+    Automounter::Mountpoint mountpoint_;
 
   public:
     Volume(const Volume &) = delete;
     Volume &operator=(const Volume &) = delete;
 
-    explicit Volume(Device &containing_device, int idx, const char *label,
-                    const char *fstype, const char *devname):
+    explicit Volume(std::shared_ptr<Device> containing_device,
+                    int idx, const char *label,
+                    const char *fstype, const char *devname,
+                    const Automounter::ExternalTools &tools):
         containing_device_(containing_device),
         index_(idx),
         state_(PENDING),
         label_(label),
         fstype_(fstype),
-        devname_(devname)
+        devname_(devname),
+        mountpoint_(tools)
     {}
 
-    ~Volume()
-    {
-        set_eol_state_and_cleanup(UNUSABLE, false);
-    }
-
-    const Device *get_device() const { return &containing_device_; }
+    std::shared_ptr<const Device> get_device() const { return containing_device_; }
     int get_index() const { return index_; }
     State get_state() const { return state_; }
     const std::string &get_label() const { return label_; }
@@ -330,9 +336,12 @@ class Volume
 
     void reject() { state_ = REJECTED; }
 
-    const std::string &get_mountpoint() const { return mountpoint_path_; }
+    bool mk_mountpoint_directory();
+    const std::string &get_mountpoint_name() const { return mountpoint_.str(); }
 
-    void set_mounted(const std::string &path);
+    bool mount(const Automounter::FSMountOptions &mount_options);
+
+    void set_mounted();
     void set_removed();
     void set_unusable();
 

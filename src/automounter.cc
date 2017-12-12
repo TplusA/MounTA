@@ -24,6 +24,7 @@
 #include <cstring>
 
 #include "automounter.hh"
+#include "external_tools.hh"
 #include "dbus_iface_deep.h"
 #include "messages.h"
 #include "os.h"
@@ -51,13 +52,13 @@ static void announce_new_volume(const Devices::Volume &vol)
     tdbus_moun_ta_emit_new_volume(dbus_get_mounta_iface(),
                                   vol.get_index() >= 0 ? vol.get_index() : UINT_MAX,
                                   vol.get_label().c_str(),
-                                  vol.get_mountpoint().c_str(),
+                                  vol.get_mountpoint_name().c_str(),
                                   vol.get_device()->get_id());
 }
 
 static void announce_new_device(const Devices::Device &dev)
 {
-    if(!dev.get_working_directory().empty())
+    if(dev.get_working_directory().exists())
     {
         /* note: this duplicates part of #dbusmethod_get_all() */
         GVariant *usb_info =
@@ -65,98 +66,9 @@ static void announce_new_device(const Devices::Device &dev)
         tdbus_moun_ta_emit_new_usbdevice(dbus_get_mounta_iface(),
                                          dev.get_id(),
                                          dev.get_display_name().c_str(),
-                                         dev.get_working_directory().c_str(),
+                                         dev.get_working_directory().str().c_str(),
                                          usb_info);
     }
-}
-
-static void announce_device_removed(const Devices::Device &dev)
-{
-    if(!dev.get_working_directory().empty())
-        tdbus_moun_ta_emit_device_removed(dbus_get_mounta_iface(),
-                                          dev.get_id(),
-                                          dev.get_working_directory().c_str());
-}
-
-static std::string ensure_mountpoint_directory(const std::string &wd,
-                                               const Devices::Volume &volume)
-{
-    const auto *dev = volume.get_device();
-
-    if(volume.get_state() == Devices::Volume::PENDING &&
-       !dev->get_working_directory().empty())
-    {
-        std::ostringstream os;
-
-        os << dev->get_working_directory() << '/' << volume.get_index();
-
-        if(os_mkdir_hierarchy(os.str().c_str(), true))
-            return os.str();
-    }
-
-    return "";
-}
-
-static void do_mount_volume(Devices::Volume &volume, const std::string &path,
-                            const Automounter::ExternalTools &tools,
-                            const Automounter::FSMountOptions &mount_options)
-{
-    log_assert(volume.get_state() == Devices::Volume::PENDING);
-
-    if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_NORMAL),
-                           "%s %s %s %s %s",
-                           tools.mount_.executable_.c_str(),
-                           tools.mount_.options_.c_str(),
-                           mount_options.get_options(volume.get_fstype()),
-                           volume.get_device_name().c_str(), path.c_str()) == 0)
-    {
-        volume.set_mounted(path);
-
-        msg_info("Mounted %s to %s (USB hub %u, port %u)",
-                 volume.get_device_name().c_str(), path.c_str(),
-                 volume.get_device()->get_usb_hub_id(),
-                 volume.get_device()->get_usb_port());
-
-        announce_new_volume(volume);
-    }
-    else
-    {
-        volume.set_unusable();
-
-        msg_error(0, LOG_ERR, "Failed mounting %s to %s",
-                  volume.get_device_name().c_str(), path.c_str());
-
-        /* we need to clean up after ourselves */
-        (void)os_rmdir(path.c_str(), true);
-    }
-}
-
-static bool do_unmount_path(const char *path,
-                            const Automounter::ExternalTools &tools)
-{
-    return os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_NORMAL),
-                               "%s %s %s",
-                               tools.unmount_.executable_.c_str(),
-                               tools.unmount_.options_.c_str(),
-                               path);
-}
-
-static void do_unmount_volume(Devices::Volume &volume,
-                              const Automounter::ExternalTools &tools)
-{
-    log_assert(volume.get_state() == Devices::Volume::MOUNTED ||
-               volume.get_state() == Devices::Volume::REJECTED);
-
-    if(do_unmount_path(volume.get_mountpoint().c_str(), tools) == 0)
-        msg_info("Unmounted %s from %s",
-                 volume.get_device_name().c_str(),
-                 volume.get_mountpoint().c_str());
-    else
-        msg_info("Failed unmounting %s from %s (ignored)",
-                 volume.get_device_name().c_str(),
-                 volume.get_mountpoint().c_str());
-
-    volume.set_removed();
 }
 
 /*!
@@ -194,9 +106,7 @@ static void apply_volume_filter(Devices::Volume &vol)
     log_assert(vol.get_state() == Devices::Volume::PENDING);
 }
 
-static void try_mount_volume(Devices::Volume &vol, const Devices::Device &dev,
-                             const std::string &working_directory,
-                             const Automounter::ExternalTools &tools,
+static void try_mount_volume(Devices::Volume &vol,
                              const Automounter::FSMountOptions &mount_options)
 {
     switch(vol.get_state())
@@ -230,23 +140,37 @@ static void try_mount_volume(Devices::Volume &vol, const Devices::Device &dev,
      */
     apply_volume_filter(vol);
 
-    const std::string mountpoint_path(ensure_mountpoint_directory(working_directory, vol));
-
     if(vol.get_state() != Devices::Volume::PENDING)
+        return;
+
+    if(!vol.get_device()->get_working_directory().exists())
         return;
 
     /*
      * None of the filters kicked in, so we'll try to mount the volume now.
      */
-    if(!mountpoint_path.empty())
-        do_mount_volume(vol, mountpoint_path, tools, mount_options);
+    if(vol.mk_mountpoint_directory() && vol.mount(mount_options))
+    {
+        vol.set_mounted();
+
+        msg_info("Mounted %s to %s (USB hub %u, port %u)",
+                 vol.get_device_name().c_str(),
+                 vol.get_mountpoint_name().c_str(),
+                 vol.get_device()->get_usb_hub_id(),
+                 vol.get_device()->get_usb_port());
+
+        announce_new_volume(vol);
+    }
     else
+    {
         vol.set_unusable();
+
+        msg_error(0, LOG_ERR, "Failed mounting device %s",
+                  vol.get_device_name().c_str());
+    }
 }
 
 static void mount_all_pending_volumes(Devices::Device &dev,
-                                      const std::string &working_directory,
-                                      const Automounter::ExternalTools &tools,
                                       const Automounter::FSMountOptions &mount_options)
 {
     for(const auto &volinfo : dev)
@@ -255,8 +179,7 @@ static void mount_all_pending_volumes(Devices::Device &dev,
             continue;
 
         if(volinfo.second->get_state() == Devices::Volume::PENDING)
-            try_mount_volume(*volinfo.second, dev, working_directory,
-                             tools, mount_options);
+            try_mount_volume(*volinfo.second, mount_options);
     }
 }
 
@@ -268,7 +191,7 @@ void Automounter::Core::handle_new_device(const char *device_path)
 
     Devices::Volume *vol;
     bool have_probed_dev;
-    auto *dev = devman_.new_entry(device_path, vol, have_probed_dev);
+    auto dev = devman_.new_entry(device_path, vol, have_probed_dev);
 
     if(dev == nullptr || vol == nullptr)
     {
@@ -308,47 +231,15 @@ void Automounter::Core::handle_new_device(const char *device_path)
     {
         std::ostringstream os;
         os << working_directory_ << '/' << dev->get_id();
-        dev->set_working_directory(os.str());
 
-        announce_new_device(*dev);
+        if(dev->mk_working_directory(os.str()))
+            announce_new_device(*dev);
     }
 
     if(have_probed_dev)
-        mount_all_pending_volumes(*dev, working_directory_,
-                                  tools_, mount_options_);
+        mount_all_pending_volumes(*dev, mount_options_);
     else if(vol != nullptr)
-        try_mount_volume(*vol, *dev, working_directory_,
-                         tools_, mount_options_);
-}
-
-static void try_unmount_volume(Devices::Volume &vol,
-                               const Automounter::ExternalTools &tools)
-{
-    switch(vol.get_state())
-    {
-      case Devices::Volume::PENDING:
-        vol.set_unusable();
-        break;
-
-      case Devices::Volume::REJECTED:
-        BUG("Attempting to unmount rejected volume");
-
-        /* fall-through */
-
-      case Devices::Volume::MOUNTED:
-        do_unmount_volume(vol, tools);
-        break;
-
-      case Devices::Volume::UNUSABLE:
-        break;
-
-      case Devices::Volume::REMOVED:
-        BUG("Attempted to unmount removed volume");
-        break;
-    }
-
-    log_assert(vol.get_state() == Devices::Volume::REMOVED ||
-               vol.get_state() == Devices::Volume::UNUSABLE);
+        try_mount_volume(*vol, mount_options_);
 }
 
 void Automounter::Core::handle_removed_device(const char *device_path)
@@ -358,11 +249,13 @@ void Automounter::Core::handle_removed_device(const char *device_path)
     msg_info("Removed device: \"%s\"", device_path);
 
     devman_.remove_entry(device_path,
-                         announce_device_removed,
-                         [this] (Devices::Volume &volume)
-                         {
-                             try_unmount_volume(volume, tools_);
-                         });
+        [] (const Devices::Device &device)
+        {
+            if(device.get_working_directory().exists())
+                tdbus_moun_ta_emit_device_removed(dbus_get_mounta_iface(),
+                                                device.get_id(),
+                                                device.get_working_directory().str().c_str());
+        });
 }
 
 static int remove_mountpoint_the_hard_way(const char *path,
@@ -370,12 +263,14 @@ static int remove_mountpoint_the_hard_way(const char *path,
 {
     const auto &tools = *reinterpret_cast<const Automounter::ExternalTools *>(user_data);
 
-    if(do_unmount_path(path, tools))
-        msg_error(0, LOG_NOTICE, "Unmounted \"%s\" the hard way", path);
+    if(dtype != DT_DIR)
+        msg_error(0, LOG_ERR,
+                  "Unexpected entry in top-level directory: \"%s\"", path);
     else
-        msg_error(0, LOG_NOTICE, "Failed unmounting \"%s\" the hard way", path);
-
-    (void)os_rmdir(path, true);
+    {
+        Automounter::Mountpoint mp(tools, path);
+        mp.probe();
+    }
 
     return 0;
 }
@@ -383,19 +278,14 @@ static int remove_mountpoint_the_hard_way(const char *path,
 void Automounter::Core::shutdown()
 {
     /* Attempt to clean up the nice and polite way. */
-    while(devman_.remove_entry(devman_.begin(),
-                               nullptr,
-                               [this] (Devices::Volume &volume)
-                               {
-                                   try_unmount_volume(volume, tools_);
-                               }))
-        ;
+    for(auto it = devman_.begin(); it != devman_.end(); ++it)
+        devman_.remove_entry(it, nullptr);
 
     /* Remove residual mountpoints. There shouldn't be any, but we want to be
      * sure to leave the system in the most sane state possible. */
     os_foreach_in_path(working_directory_.c_str(),
                        remove_mountpoint_the_hard_way,
-                       const_cast<Automounter::ExternalTools *>(&tools_));
+                       nullptr);
 
     /* Top-level working directory should be removed as well. Will be created
      * again when devices are found. */

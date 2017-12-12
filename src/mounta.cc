@@ -28,6 +28,7 @@
 
 #include "fdevents.hh"
 #include "automounter.hh"
+#include "external_tools.hh"
 #include "dbus_iface.h"
 #include "messages.h"
 #include "versioninfo.h"
