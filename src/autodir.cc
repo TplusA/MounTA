@@ -39,6 +39,26 @@ bool Automounter::Directory::create()
     return is_created_;
 }
 
+bool Automounter::Directory::probe()
+{
+    if(absolute_path_.empty())
+        return false;
+
+    switch(os_path_get_type(absolute_path_.c_str()))
+    {
+      case OS_PATH_TYPE_IO_ERROR:
+      case OS_PATH_TYPE_FILE:
+      case OS_PATH_TYPE_OTHER:
+        break;
+
+      case OS_PATH_TYPE_DIRECTORY:
+        is_created_ = true;
+        break;
+    }
+
+    return is_created_;;
+}
+
 void Automounter::Directory::cleanup()
 {
     if(!is_created_)
@@ -78,8 +98,19 @@ void Automounter::Mountpoint::set(std::string &&path)
     directory_ = std::move(Directory(std::move(path)));
 }
 
-void Automounter::Mountpoint::probe()
+bool Automounter::Mountpoint::probe()
 {
+    if(!directory_.probe())
+        return false;
+
+    is_mounted_ =
+        os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
+                            "%s %s \"%s\"",
+                            tools_.mountpoint_.executable_.c_str(),
+                            tools_.mountpoint_.options_.c_str(),
+                            directory_.str().c_str()) == 0;
+
+    return is_mounted_;
 }
 
 bool Automounter::Mountpoint::mount(const std::string &device_name,

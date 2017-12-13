@@ -43,6 +43,7 @@ struct Parameters
     const char *working_directory;
     const char *mount_tool;
     const char *unmount_tool;
+    const char *mpoint_tool;
     const char *blkid_tool;
 };
 
@@ -119,6 +120,7 @@ static int process_command_line(int argc, char *argv[], Parameters &parameters)
     parameters.connect_to_session_dbus = true;
     parameters.mount_tool = "/usr/bin/sudo /bin/mount";
     parameters.unmount_tool = "/usr/bin/sudo /bin/umount";
+    parameters.mpoint_tool = "/usr/bin/mountpoint";
     parameters.blkid_tool = "/usr/bin/sudo /sbin/blkid";
     parameters.working_directory = "/run/MounTA";
 
@@ -162,6 +164,50 @@ static int process_command_line(int argc, char *argv[], Parameters &parameters)
 #undef CHECK_ARGUMENT
 
     return 0;
+}
+
+using UnmountMountpointData =
+    std::pair<const Automounter::Directory &, const Automounter::ExternalTools &>;
+
+static int unmount_mountpoint(const char *path, unsigned char dtype, void *user_data)
+{
+    if(dtype != DT_DIR)
+        return 0;
+
+    auto &data(*static_cast<const UnmountMountpointData *>(user_data));
+
+    Automounter::Mountpoint mp(std::get<1>(data), std::get<0>(data).str() + '/' + path);
+    mp.probe();
+
+    return 0;
+}
+
+using CleanupMountRootData =
+    std::pair<const char *const, const Automounter::ExternalTools &>;
+
+static int cleanup_mount_root(const char *path, unsigned char dtype, void *user_data)
+{
+    if(dtype != DT_DIR)
+        return 0;
+
+    auto &data(*static_cast<const CleanupMountRootData *>(user_data));
+
+    Automounter::Directory dir(std::string(std::get<0>(data)) + '/' + path);
+
+    if(dir.probe())
+    {
+        UnmountMountpointData d(dir, std::get<1>(data));
+        os_foreach_in_path(dir.str().c_str(), unmount_mountpoint, &d);
+    }
+
+    return 0;
+}
+
+void cleanup_working_directory(const char *working_directory,
+                               const Automounter::ExternalTools &tools)
+{
+    CleanupMountRootData data(working_directory, tools);
+    os_foreach_in_path(working_directory, cleanup_mount_root, &data);
 }
 
 static void handle_device_changes(FdEvents::EventType ev, const char *path, void *user_data)
@@ -277,7 +323,11 @@ int main(int argc, char *argv[])
         { "hfsplus", mount_options_fatish },
     });
     Automounter::ExternalTools tools(parameters.mount_tool,   mount_options_default,
-                                     parameters.unmount_tool, nullptr);
+                                     parameters.unmount_tool, nullptr,
+                                     parameters.mpoint_tool,  "-q");
+
+    cleanup_working_directory(parameters.working_directory, tools);
+
     auto event_data =
         std::make_pair(Automounter::Core(parameters.working_directory, tools,
                                          mount_options),

@@ -50,6 +50,7 @@ class Directory
     ~Directory() { cleanup(); }
 
     bool create();
+    bool probe();
 
     bool exists() const { return is_created_; }
     const std::string &str() const { return absolute_path_; }
@@ -86,7 +87,7 @@ class Mountpoint
     void cleanup() { do_cleanup(true); }
 
     bool create() { return directory_.create(); }
-    static void probe();
+    bool probe();
     bool mount(const std::string &device_name,
                const std::string &mount_options);
 

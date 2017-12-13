@@ -45,15 +45,18 @@ class ExternalTools
 
     const Command mount_;
     const Command unmount_;
+    const Command mountpoint_;
 
     ExternalTools(const ExternalTools &) = delete;
     ExternalTools &operator=(const ExternalTools &) = delete;
     ExternalTools(ExternalTools &&) = default;
 
     explicit ExternalTools(const char *mount,   const char *mount_default_options,
-                           const char *unmount, const char *unmount_default_options):
-        mount_(mount,     mount_default_options),
-        unmount_(unmount, unmount_default_options)
+                           const char *unmount, const char *unmount_default_options,
+                           const char *mpoint,  const char *mpoint_default_options):
+        mount_(mount,       mount_default_options),
+        unmount_(unmount,   unmount_default_options),
+        mountpoint_(mpoint, mpoint_default_options)
     {}
 };
 

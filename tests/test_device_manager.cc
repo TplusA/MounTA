@@ -57,8 +57,9 @@ static MockDevicesOs *mock_devices_os;
 
 static Devices::AllDevices *devs;
 
-static Automounter::ExternalTools tools("/bin/mount",  nullptr,
-                                        "/bin/umount", nullptr);
+static Automounter::ExternalTools tools("/bin/mount",          nullptr,
+                                        "/bin/umount",         nullptr,
+                                        "/usr/bin/mountpoint", "-q");
 void cut_setup(void)
 {
     mock_messages = new MockMessages;
