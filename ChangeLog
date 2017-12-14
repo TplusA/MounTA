@@ -1,3 +1,21 @@
+2017-12-19  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.7 released.
+
+	* Device handling: Scan devices for partitions already available at
+	  startup time. No more USB power hacks required.
+
+	* Device handling: Unmount residual mounts on startup. This change is
+	  not relevant for end users, but very relevant during development.
+
+	* Device reporting: USB devices have their correct USB port reported
+	  over D-Bus now. Users of the de.tahifi.MounTA.GetAll method and
+	  de.tahifi.MounTA.NewUSBDevice signal, respectively, can now make use
+	  of this information.
+
+	* Misc: Improve resource management by use of smart pointers, other
+	  internal improvements.
+
 2016-07-11  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.6 released.
