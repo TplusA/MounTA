@@ -94,8 +94,6 @@ static int setup(const Parameters &parameters, GMainLoop *&loop)
         return -1;
     }
 
-    osdev_init(parameters.blkid_tool, NULL);
-
     return 0;
 }
 
@@ -322,10 +320,14 @@ int main(int argc, char *argv[])
         { "hfs",     mount_options_fatish },
         { "hfsplus", mount_options_fatish },
     });
-    Automounter::ExternalTools tools(parameters.mount_tool,   mount_options_default,
-                                     parameters.unmount_tool, nullptr,
-                                     parameters.mpoint_tool,  "-q");
 
+    Automounter::ExternalTools tools(
+        Automounter::ExternalTools::Command(parameters.mount_tool,   mount_options_default),
+        Automounter::ExternalTools::Command(parameters.unmount_tool, nullptr),
+        Automounter::ExternalTools::Command(parameters.mpoint_tool,  "-q"),
+        Automounter::ExternalTools::Command(parameters.blkid_tool,   nullptr));
+
+    Devices::init(tools);
     cleanup_working_directory(parameters.working_directory, tools);
 
     auto event_data =

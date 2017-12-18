@@ -28,7 +28,7 @@
 
 #include "device_manager.hh"
 #include "devices_util.h"
-#include "devices_os.h"
+#include "devices_os.hh"
 #include "messages.h"
 
 Devices::AllDevices::~AllDevices()
@@ -134,7 +134,7 @@ Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
     if(!get_devname_with_volume_number(&data, devlink))
         return nullptr;
 
-    struct osdev_volume_info volinfo;
+    VolumeInfo volinfo;
     bool have_volume_info = false;
 
     std::shared_ptr<Device> device =
@@ -146,7 +146,7 @@ Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
     if(data.volume_number_ > 0 || have_volume_info)
     {
         if(!have_volume_info)
-            have_volume_info = osdev_get_volume_information(data.devname_, &volinfo);
+            have_volume_info = get_volume_information(data.devname_, volinfo);
 
         if(have_volume_info)
         {
@@ -168,9 +168,6 @@ Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
 
         volume = device->lookup_volume_by_devname(data.devname_);
     }
-
-    if(have_volume_info)
-        osdev_free_volume_information(&volinfo);
 
     return device;
 }
@@ -244,8 +241,8 @@ Devices::AllDevices::get_device_by_devlink(const char *devlink)
 
 std::shared_ptr<Devices::Device>
 Devices::AllDevices::add_or_get_device(const char *devlink,
-                                       const char *devname,
-                                       struct osdev_volume_info &volinfo,
+                                       const std::string &devname,
+                                       VolumeInfo &volinfo,
                                        bool &have_info,
                                        bool &have_probed_containing_device)
 {
@@ -261,14 +258,13 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
     }
 
     /* maybe also add a volume for this device */
-    have_info = osdev_get_volume_information(devname, &volinfo);
+    have_info = get_volume_information(devname, volinfo);
 
     return mk_device(devices_,
         [this, &devlink, &have_probed_containing_device]
-        (const Devices::ID &device_id)
+        (const ID &device_id)
         {
-            auto d = std::make_shared<Devices::Device>(device_id, devlink,
-                                                       true, tools_);
+            auto d = std::make_shared<Device>(device_id, devlink, true, tools_);
             have_probed_containing_device = d->get_state() == Device::State::PROBED;
             return d;
         });
@@ -277,18 +273,18 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
 std::pair<std::shared_ptr<Devices::Device>, Devices::Volume *>
 Devices::AllDevices::add_or_get_volume(std::shared_ptr<Devices::Device> device,
                                        const char *devlink,
-                                       const char *devname,
-                                       const struct osdev_volume_info &volinfo)
+                                       const std::string &devname,
+                                       const VolumeInfo &volinfo)
 {
 
     if(device == nullptr)
     {
         device = mk_device(devices_,
-            [this, &devlink] (const Devices::ID &device_id)
+            [this, &devlink] (const ID &device_id)
             {
-                return std::make_shared<Devices::Device>(device_id,
-                                                         mk_root_devlink_name(devlink),
-                                                         false, tools_);
+                return std::make_shared<Device>(device_id,
+                                                mk_root_devlink_name(devlink),
+                                                false, tools_);
             });
     }
 
@@ -304,14 +300,11 @@ Devices::AllDevices::add_or_get_volume(std::shared_ptr<Devices::Device> device,
         return std::make_pair(device, existing_volume);
     }
 
-    const char *label = ((volinfo.label != nullptr && volinfo.label[0] != '\0')
-                         ? volinfo.label
-                         : volinfo.fstype);
+    const auto &label(!volinfo.label.empty() ? volinfo.label : volinfo.fstype);
 
-    auto volume = std::unique_ptr<Devices::Volume>(
-                        new Devices::Volume(device, volinfo.idx,
-                                            label, volinfo.fstype, devname,
-                                            tools_));
+    auto volume = std::unique_ptr<Volume>(
+                        new Volume(device, volinfo.idx,
+                                   label, volinfo.fstype, devname, tools_));
 
     existing_volume = volume.get();
 

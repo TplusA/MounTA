@@ -22,7 +22,7 @@
 #include <functional>
 
 #include "devices.hh"
-#include "devices_os.h"
+#include "devices_os.hh"
 
 namespace Automounter { class ExternalTools; }
 
@@ -81,8 +81,8 @@ class AllDevices
 
   private:
     std::shared_ptr<Device> add_or_get_device(const char *devlink,
-                                              const char *devname,
-                                              struct osdev_volume_info &volinfo,
+                                              const std::string &devname,
+                                              VolumeInfo &volinfo,
                                               bool &have_info,
                                               bool &have_probed_containing_device);
 
@@ -91,8 +91,8 @@ class AllDevices
 
     std::pair<std::shared_ptr<Devices::Device>, Devices::Volume *>
     add_or_get_volume(std::shared_ptr<Device> device,
-                      const char *devlink, const char *devname,
-                      const struct osdev_volume_info &volinfo);
+                      const char *devlink, const std::string &devname,
+                      const VolumeInfo &volinfo);
 };
 
 }

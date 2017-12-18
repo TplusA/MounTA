@@ -26,7 +26,7 @@
 #include <dirent.h>
 
 #include "devices.hh"
-#include "devices_os.h"
+#include "devices_os.hh"
 #include "automounter.hh"
 #include "messages.h"
 
@@ -60,15 +60,13 @@ Devices::Device::~Device()
 }
 
 Devices::Volume *
-Devices::Device::lookup_volume_by_devname(const char *devname) const
+Devices::Device::lookup_volume_by_devname(const std::string &devname) const
 {
-    log_assert(devname != nullptr);
-
     const auto &vol =
         std::find_if(volumes_.begin(), volumes_.end(),
             [&devname] (const decltype(volumes_)::value_type &it) -> bool
             {
-                return strcmp(it.second->get_device_name().c_str(), devname) == 0;
+                return it.second->get_device_name() == devname;
             });
 
     return (vol != volumes_.end()) ? vol->second.get() : nullptr;
@@ -116,37 +114,32 @@ bool Devices::Device::do_probe()
 {
     log_assert(state_ == SYNTHETIC);
 
-    struct osdev_device_info devinfo;
+    DeviceInfo devinfo;
 
     const char *name = strrchr(devlink_name_.c_str(), '/');
     device_name_ = (name != nullptr) ? (name + 1) : devlink_name_.c_str();
 
     if(device_name_.empty() ||
-       !osdev_get_device_information(devlink_name_.c_str(), &devinfo))
+       !get_device_information(devlink_name_, devinfo))
     {
         state_ = BROKEN;
         return false;
     }
 
-    bool result = false;
-
     switch(devinfo.type)
     {
-      case OSDEV_DEVICE_TYPE_UNKNOWN:
+      case DeviceType::UNKNOWN:
         state_ = BROKEN;
         break;
 
-      case OSDEV_DEVICE_TYPE_USB:
-        root_hub_id_ = Devices::USBHubID(devinfo.usb.hub_id);
+      case DeviceType::USB:
+        root_hub_id_ = USBHubID(devinfo.usb.hub_id);
         hub_port_ = devinfo.usb.port;
         state_ = PROBED;
-        result = true;
-        break;
+        return true;
     }
 
-    osdev_free_device_information(&devinfo);
-
-    return result;
+    return false;
 }
 
 bool Devices::Volume::mk_mountpoint_directory()

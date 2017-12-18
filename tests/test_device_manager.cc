@@ -57,9 +57,12 @@ static MockDevicesOs *mock_devices_os;
 
 static Devices::AllDevices *devs;
 
-static Automounter::ExternalTools tools("/bin/mount",          nullptr,
-                                        "/bin/umount",         nullptr,
-                                        "/usr/bin/mountpoint", "-q");
+static Automounter::ExternalTools tools(
+            Automounter::ExternalTools::Command("/bin/mount",          nullptr),
+            Automounter::ExternalTools::Command("/bin/umount",         nullptr),
+            Automounter::ExternalTools::Command("/usr/bin/mountpoint", "-q"),
+            Automounter::ExternalTools::Command("/sbin/blkid",         nullptr));
+
 void cut_setup(void)
 {
     mock_messages = new MockMessages;
@@ -104,10 +107,9 @@ void cut_teardown(void)
 }
 
 static void add_device_probe_expectations(const char *name,
-                                          const struct osdev_device_info *info)
+                                          const Devices::DeviceInfo &info)
 {
-    mock_devices_os->expect_osdev_get_device_information(name, info);
-    mock_devices_os->expect_osdev_free_device_information(info);
+    mock_devices_os->expect_get_device_information(name, &info);
 }
 
 static std::shared_ptr<Devices::Device>
@@ -115,12 +117,12 @@ new_device_with_expectations(const DevNames &device_names,
                              const Devices::Volume **ret_volume,
                              bool expecting_null_volume,
                              bool device_exists_already = false,
-                             const struct osdev_volume_info *fake_info = nullptr,
+                             const Devices::VolumeInfo *fake_info = nullptr,
                              bool expecting_device_probe = true)
 {
-    static const struct osdev_device_info fake_device_info =
+    static const Devices::DeviceInfo fake_device_info =
     {
-        .type = OSDEV_DEVICE_TYPE_USB,
+        .type = Devices::DeviceType::USB,
         .usb = { .hub_id = 4, .port = 2, },
     };
 
@@ -128,16 +130,13 @@ new_device_with_expectations(const DevNames &device_names,
 
     if(!device_exists_already)
     {
-        mock_devices_os->expect_osdev_get_volume_information(device_names.block_device_name, fake_info);
+        mock_devices_os->expect_get_volume_information(device_names.block_device_name, fake_info);
 
         if(expecting_device_probe)
-            add_device_probe_expectations(device_names.device_identifier, &fake_device_info);
-
-        if(fake_info != nullptr)
-            mock_devices_os->expect_osdev_free_volume_information(fake_info);
+            add_device_probe_expectations(device_names.device_identifier, fake_device_info);
     }
     else if(expecting_device_probe)
-        add_device_probe_expectations(device_names.device_identifier, &fake_device_info);
+        add_device_probe_expectations(device_names.device_identifier, fake_device_info);
 
     Devices::Volume *volume;
     bool have_probed_dev;
@@ -180,7 +179,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
                              std::shared_ptr<Devices::Device> expected_device,
                              Devices::Device::State expected_device_state = Devices::Device::PROBED)
 {
-    const struct osdev_volume_info fake_info =
+    const Devices::VolumeInfo fake_info =
     {
         .idx = idx,
         .label = volume_names.volume_label,
@@ -188,8 +187,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     };
 
     mock_os->expect_os_resolve_symlink(volume_names.block_device_name, volume_names.device_identifier);
-    mock_devices_os->expect_osdev_get_volume_information(volume_names.block_device_name, &fake_info);
-    mock_devices_os->expect_osdev_free_volume_information(&fake_info);
+    mock_devices_os->expect_get_volume_information(volume_names.block_device_name, &fake_info);
 
     const Devices::Volume *vol;
     bool have_probed_dev;
@@ -212,7 +210,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
                              std::shared_ptr<Devices::Device> &ret_device,
                              bool expecting_null_device)
 {
-    const struct osdev_volume_info fake_info =
+    const Devices::VolumeInfo fake_info =
     {
         .idx = idx,
         .label = volume_names.volume_label,
@@ -220,8 +218,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
     };
 
     mock_os->expect_os_resolve_symlink(volume_names.block_device_name, volume_names.device_identifier);
-    mock_devices_os->expect_osdev_get_volume_information(volume_names.block_device_name, &fake_info);
-    mock_devices_os->expect_osdev_free_volume_information(&fake_info);
+    mock_devices_os->expect_get_volume_information(volume_names.block_device_name, &fake_info);
 
     Devices::Volume *vol;
     bool have_probed_dev;
@@ -298,7 +295,7 @@ void test_new_device_with_volumes()
 void test_new_device_with_volume_on_whole_disk()
 {
     static constexpr DevNames device_names("/dev/sdt", "usb-Device_ABC");
-    static constexpr struct osdev_volume_info fake_info =
+    static const Devices::VolumeInfo fake_info =
     {
         .idx = -1,
         .label = "My Volume",
@@ -314,10 +311,10 @@ void test_new_device_with_volume_on_whole_disk()
     cut_assert_true(it != dev->end());
     cppcut_assert_equal(vol, it->second.get());
 
-    static constexpr DevNames expected_volume(device_names.block_device_name,
-                                              device_names.device_identifier,
-                                              fake_info.label,
-                                              fake_info.fstype);
+    static const DevNames expected_volume(device_names.block_device_name,
+                                          device_names.device_identifier,
+                                          fake_info.label.c_str(),
+                                          fake_info.fstype.c_str());
 
     cppcut_assert_equal(expected_volume.block_device_name, vol->get_device_name().c_str());
     cppcut_assert_equal(expected_volume.device_identifier, vol->get_device()->get_devlink_name().c_str());
@@ -541,7 +538,7 @@ void test_devices_cannot_be_added_twice()
 void test_devices_with_volume_on_whole_device_cannot_be_added_twice()
 {
     static constexpr DevNames device_names("/dev/sdd", "usb-Duplicate_Disk_9310");
-    static constexpr struct osdev_volume_info fake_info =
+    static const Devices::VolumeInfo fake_info =
     {
         .idx = -1,
         .label = "Awesome Storage Device",

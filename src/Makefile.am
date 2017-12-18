@@ -23,7 +23,7 @@ bin_PROGRAMS = mounta
 mounta_SOURCES = \
     mounta.cc messages.h messages.c \
     devices.hh devices_util.h device_manager.hh \
-    devices_os.h devices_os.c \
+    devices_os.hh devices_os.cc \
     fdevents.hh fdevents.cc \
     automounter.hh automounter.cc \
     autodir.hh external_tools.hh \

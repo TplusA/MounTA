@@ -229,7 +229,7 @@ class Device
     void reject() { state_ = REJECTED; }
     bool probe();
 
-    Volume *lookup_volume_by_devname(const char *devname) const;
+    Volume *lookup_volume_by_devname(const std::string &devname) const;
     bool add_volume(std::unique_ptr<Devices::Volume> &&volume);
     void drop_volumes();
 
@@ -315,8 +315,8 @@ class Volume
     Volume &operator=(const Volume &) = delete;
 
     explicit Volume(std::shared_ptr<Device> containing_device,
-                    int idx, const char *label,
-                    const char *fstype, const char *devname,
+                    int idx, const std::string &label,
+                    const std::string &fstype, const std::string &devname,
                     const Automounter::ExternalTools &tools):
         containing_device_(containing_device),
         index_(idx),

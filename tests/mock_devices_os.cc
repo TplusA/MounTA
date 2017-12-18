@@ -76,8 +76,8 @@ class MockDevicesOs::Expectation
         const Fn function_id_;
         bool ret_bool_;
         std::string arg_string_;
-        const struct osdev_device_info *arg_devinfo_;
-        const struct osdev_volume_info *arg_volinfo_;
+        const Devices::DeviceInfo *arg_devinfo_;
+        const Devices::VolumeInfo *arg_volinfo_;
 
         explicit Data(Fn fn):
             function_id_(fn),
@@ -97,7 +97,7 @@ class MockDevicesOs::Expectation
     Expectation(const Expectation &) = delete;
     Expectation &operator=(const Expectation &) = delete;
 
-    explicit Expectation(bool retval, const char *devlink, const struct osdev_device_info *info):
+    explicit Expectation(bool retval, const std::string &devlink, const Devices::DeviceInfo *info):
         d(Fn::get_device_information)
     {
         data_.ret_bool_ = retval;
@@ -105,13 +105,13 @@ class MockDevicesOs::Expectation
         data_.arg_devinfo_ = info;
     }
 
-    explicit Expectation(const struct osdev_device_info *info):
+    explicit Expectation(const Devices::DeviceInfo *info):
         d(Fn::free_device_information)
     {
         data_.arg_devinfo_ = info;
     }
 
-    explicit Expectation(bool retval, const char *devname, const struct osdev_volume_info *info):
+    explicit Expectation(bool retval, const std::string &devname, const Devices::VolumeInfo *info):
         d(Fn::get_volume_information)
     {
         data_.ret_bool_ = retval;
@@ -119,7 +119,7 @@ class MockDevicesOs::Expectation
         data_.arg_volinfo_ = info;
     }
 
-    explicit Expectation(const struct osdev_volume_info *info):
+    explicit Expectation(const Devices::VolumeInfo *info):
         d(Fn::free_volume_information)
     {
         data_.arg_volinfo_ = info;
@@ -150,84 +150,48 @@ void MockDevicesOs::check() const
     expectations_->check();
 }
 
-void MockDevicesOs::expect_osdev_get_device_information(const char *devlink, const struct osdev_device_info *info)
+void MockDevicesOs::expect_get_device_information(const std::string &devlink,
+                                                  const Devices::DeviceInfo *info)
 {
     expectations_->add(Expectation(info != nullptr, devlink, info));
 }
 
-void MockDevicesOs::expect_osdev_free_device_information(const struct osdev_device_info *info)
-{
-    expectations_->add(Expectation(info));
-}
-
-void MockDevicesOs::expect_osdev_get_volume_information(const char *devname, const struct osdev_volume_info *info)
+void MockDevicesOs::expect_get_volume_information(const std::string &devname,
+                                                  const Devices::VolumeInfo *info)
 {
     expectations_->add(Expectation(info != nullptr, devname, info));
-}
-
-void MockDevicesOs::expect_osdev_free_volume_information(const struct osdev_volume_info *info)
-{
-    expectations_->add(Expectation(info));
 }
 
 
 MockDevicesOs *mock_devices_os_singleton = nullptr;
 
-bool osdev_get_device_information(const char *devname, struct osdev_device_info *info)
+bool Devices::get_device_information(const std::string &devlink, Devices::DeviceInfo &info)
 {
     const auto &expect(mock_devices_os_singleton->expectations_->get_next_expectation(__func__));
 
     cppcut_assert_equal(expect.d.function_id_, Fn::get_device_information);
-    cppcut_assert_equal(expect.d.arg_string_.c_str(), devname);
-    cppcut_assert_not_null(info);
+    cppcut_assert_equal(expect.d.arg_string_, devlink);
 
     if(expect.d.arg_devinfo_ != nullptr)
-        memcpy(info, expect.d.arg_devinfo_, sizeof(*info));
+        info = *expect.d.arg_devinfo_;
 
     return expect.d.ret_bool_;
 }
 
-void osdev_free_device_information(struct osdev_device_info *info)
-{
-    const auto &expect(mock_devices_os_singleton->expectations_->get_next_expectation(__func__));
-
-    cppcut_assert_equal(expect.d.function_id_, Fn::free_device_information);
-
-    /*
-     * The \p info pointer will be some internal pointer that we cannot access
-     * here in the mock, so we resort to deep comparison. In a better solution,
-     * the pointer passed to osdev_get_device_information() would be captured
-     * and compared against \p info at this point.
-     */
-    cppcut_assert_equal(expect.d.arg_devinfo_->type, info->type);
-
-    switch(info->type)
-    {
-      case OSDEV_DEVICE_TYPE_UNKNOWN:
-        break;
-
-      case OSDEV_DEVICE_TYPE_USB:
-        cppcut_assert_equal(expect.d.arg_devinfo_->usb.hub_id, info->usb.hub_id);
-        cppcut_assert_equal(expect.d.arg_devinfo_->usb.port, info->usb.port);
-        break;
-    }
-}
-
-bool osdev_get_volume_information(const char *devname, struct osdev_volume_info *info)
+bool Devices::get_volume_information(const std::string &devname, Devices::VolumeInfo &info)
 {
     const auto &expect(mock_devices_os_singleton->expectations_->get_next_expectation(__func__));
 
     cppcut_assert_equal(expect.d.function_id_, Fn::get_volume_information);
-    cppcut_assert_equal(expect.d.arg_string_.c_str(), devname);
-    cppcut_assert_not_null(info);
+    cppcut_assert_equal(expect.d.arg_string_, devname);
 
     if(expect.d.arg_volinfo_ != nullptr)
-        memcpy(info, expect.d.arg_volinfo_, sizeof(*info));
+        info = *expect.d.arg_volinfo_;
 
     return expect.d.ret_bool_;
 }
 
-void osdev_free_volume_information(struct osdev_volume_info *info)
+void osdev_free_volume_information(Devices::VolumeInfo *info)
 {
     const auto &expect(mock_devices_os_singleton->expectations_->get_next_expectation(__func__));
 
