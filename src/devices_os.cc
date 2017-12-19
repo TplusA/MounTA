@@ -27,6 +27,59 @@
 
 static const Automounter::ExternalTools *devices_os_tools;
 
+class Tempfile
+{
+  private:
+    static constexpr char NAME_TEMPLATE[] = "/tmp/mounta_blkid.XXXXXX";
+
+    char name_[sizeof(NAME_TEMPLATE)];
+    int fd_;
+    int errno_;
+    bool suceeded_;
+
+  public:
+    Tempfile(const Tempfile &) = delete;
+    Tempfile &operator=(const Tempfile &) = delete;
+
+    explicit Tempfile(bool keep_open = false):
+        errno_(0),
+        suceeded_(true)
+    {
+        std::copy(NAME_TEMPLATE, NAME_TEMPLATE + sizeof(NAME_TEMPLATE), name_);
+
+        fd_ = mkstemp(name_);
+
+        if(fd_ < 0)
+        {
+            errno_ = errno;
+            suceeded_ =  false;
+            name_[0] = '\0';
+            msg_error(errno_, LOG_ERR, "Failed creating temporary file");
+        }
+        else if(!keep_open)
+        {
+            os_file_close(fd_);
+            fd_ = -1;
+        }
+    }
+
+    ~Tempfile()
+    {
+        if(fd_ >= 0)
+            os_file_close(fd_);
+
+        if(name_[0] != '\0')
+            os_file_delete(name_);
+    }
+
+    bool created() const { return suceeded_; }
+    int error_code() const { return errno_; }
+
+    const char *name() const { return name_; }
+};
+
+constexpr char Tempfile::NAME_TEMPLATE[];
+
 void Devices::init(const Automounter::ExternalTools &tools)
 {
     devices_os_tools = &tools;
@@ -152,34 +205,27 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
     if(idx < 0)
         return false;
 
-    char tempfile_name[] = "/tmp/mounta_blkid.XXXXXX";
-    const int fd = mkstemp(tempfile_name);
+    Tempfile tempfile;
 
-    if(fd < 0)
-    {
-        msg_error(errno, LOG_ERR, "Failed creating temporary file");
+    if(!tempfile.created())
         return false;
-    }
-
-    os_file_close(fd);
 
     if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
                            "%s %s -o export %s >\"%s\"",
                            devices_os_tools->blkid_.executable_.c_str(),
                            devices_os_tools->blkid_.options_.c_str(),
-                           devname.c_str(), tempfile_name) < 0)
+                           devname.c_str(), tempfile.name()) < 0)
         return false;
 
     info.idx = (idx > 0) ? idx : -1;
 
     struct os_mapped_file_data output;
     const bool retval =
-        (os_map_file_to_memory(&output, tempfile_name) == 0)
+        (os_map_file_to_memory(&output, tempfile.name()) == 0)
         ? parse_output(static_cast<const char *>(output.ptr), output.length,
                        info)
         : false;
 
-    os_file_delete(tempfile_name);
     os_unmap_file(&output);
 
     return retval;
