@@ -20,6 +20,8 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
+#include <algorithm>
+
 #include "devices_os.hh"
 #include "devices_util.h"
 #include "external_tools.hh"
@@ -85,14 +87,74 @@ void Devices::init(const Automounter::ExternalTools &tools)
     devices_os_tools = &tools;
 }
 
-bool Devices::get_device_information(const std::string &devlink, DeviceInfo &devinfo)
+/*
+ * Example input:
+ * /devices/platform/bcm2708_usb/usb1/1-1/1-1.5/1-1.5:1.0/host6/target6:0:0/6:0:0:0/block/sda
+ *
+ * This function attempts to find the part before the "/host6/" part and
+ * returns a full, absolute path to that location. We assume that the sysfs is
+ * always mounted to "/sys".
+ */
+static bool parse_usb_device_id(const char *const output, size_t length,
+                                Devices::DeviceInfo &info)
 {
-    /* FIXME: These are fake information. */
-    devinfo.type = DeviceType::USB;
-    devinfo.usb.hub_id = 25;
-    devinfo.usb.port = 3;
+    if(length == 0 || output[0] != '/')
+        return false;
+
+    const char *from(output + 1);
+
+    while(true)
+    {
+        auto to(std::find_if(from, output + length,
+                             [] (const char ch) { return ch == '/'; }));
+
+        if(to >= output + length)
+            return false;
+
+        static const char key[] = "host";
+
+        if(std::distance(from, to) >= ssize_t(sizeof(key)) &&
+           std::equal(from, from + sizeof(key) - 1, key) &&
+           from[sizeof(key) - 1] >= '0' && from[sizeof(key) - 1] <= '9')
+        {
+            break;
+        }
+
+        from = to + 1;
+    }
+
+    static const char sysfs_mountpoint[] = "/sys";
+
+    info.type = Devices::DeviceType::USB;
+    info.usb_port_sysfs_name = sysfs_mountpoint;
+    info.usb_port_sysfs_name.append(output, std::distance(output, from) - 1);
 
     return true;
+}
+
+bool Devices::get_device_information(const std::string &devlink, DeviceInfo &devinfo)
+{
+    Tempfile tempfile;
+
+    if(!tempfile.created())
+        return false;
+
+    if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
+                           "%s info --query path \"%s\" >\"%s\"",
+                           devices_os_tools->udevadm_.executable_.c_str(),
+                           devlink.c_str(), tempfile.name()) < 0)
+        return false;
+
+    struct os_mapped_file_data output;
+    const bool retval =
+        (os_map_file_to_memory(&output, tempfile.name()) == 0)
+        ? parse_usb_device_id(static_cast<const char *>(output.ptr),
+                              output.length, devinfo)
+        : false;
+
+    os_unmap_file(&output);
+
+    return retval;
 }
 
 static size_t skip_whitespace(const char *const str, size_t length,
@@ -158,8 +220,8 @@ static bool try_get_value(const std::string &key, std::string &value,
     return !value.empty();
 }
 
-static bool parse_output(const char *const output, size_t length,
-                         Devices::VolumeInfo &info)
+static bool parse_blkid_output(const char *const output, size_t length,
+                               Devices::VolumeInfo &info)
 {
     info.label.clear();
     info.fstype.clear();
@@ -222,8 +284,8 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
     struct os_mapped_file_data output;
     const bool retval =
         (os_map_file_to_memory(&output, tempfile.name()) == 0)
-        ? parse_output(static_cast<const char *>(output.ptr), output.length,
-                       info)
+        ? parse_blkid_output(static_cast<const char *>(output.ptr),
+                             output.length, info)
         : false;
 
     os_unmap_file(&output);

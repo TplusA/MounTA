@@ -133,8 +133,7 @@ bool Devices::Device::do_probe()
         break;
 
       case DeviceType::USB:
-        root_hub_id_ = USBHubID(devinfo.usb.hub_id);
-        hub_port_ = devinfo.usb.port;
+        usb_port_ = devinfo.usb_port_sysfs_name;
         state_ = PROBED;
         return true;
     }

@@ -61,7 +61,8 @@ static Automounter::ExternalTools tools(
             Automounter::ExternalTools::Command("/bin/mount",          nullptr),
             Automounter::ExternalTools::Command("/bin/umount",         nullptr),
             Automounter::ExternalTools::Command("/usr/bin/mountpoint", "-q"),
-            Automounter::ExternalTools::Command("/sbin/blkid",         nullptr));
+            Automounter::ExternalTools::Command("/sbin/blkid",         nullptr),
+            Automounter::ExternalTools::Command("/bin/udevadm",        nullptr));
 
 void cut_setup(void)
 {
@@ -120,11 +121,8 @@ new_device_with_expectations(const DevNames &device_names,
                              const Devices::VolumeInfo *fake_info = nullptr,
                              bool expecting_device_probe = true)
 {
-    static const Devices::DeviceInfo fake_device_info =
-    {
-        .type = Devices::DeviceType::USB,
-        .usb = { .hub_id = 4, .port = 2, },
-    };
+    static const Devices::DeviceInfo
+        fake_device_info("/sys/devices/platform/bcm2708_usb/usb1/1-1/1-1.5/1-1.5:1.0");
 
     mock_os->expect_os_resolve_symlink(device_names.block_device_name, device_names.device_identifier);
 

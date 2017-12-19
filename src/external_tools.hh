@@ -47,16 +47,19 @@ class ExternalTools
     const Command unmount_;
     const Command mountpoint_;
     const Command blkid_;
+    const Command udevadm_;
 
     ExternalTools(const ExternalTools &) = delete;
     ExternalTools &operator=(const ExternalTools &) = delete;
 
     explicit ExternalTools(Command &&mount, Command &&unmount,
-                           Command &&mountpoint, Command &&blkid):
+                           Command &&mountpoint, Command &&blkid,
+                           Command &&udevadm):
         mount_(std::move(mount)),
         unmount_(std::move(unmount)),
         mountpoint_(std::move(mountpoint)),
-        blkid_(std::move(blkid))
+        blkid_(std::move(blkid)),
+        udevadm_(std::move(udevadm))
     {}
 };
 

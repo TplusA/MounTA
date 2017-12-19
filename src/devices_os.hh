@@ -35,13 +35,14 @@ enum class DeviceType
 struct DeviceInfo
 {
     DeviceType type;
+    std::string usb_port_sysfs_name;
 
-    struct
-    {
-        unsigned int hub_id;
-        unsigned int port;
-    }
-    usb;
+    DeviceInfo(): type(DeviceType::UNKNOWN) {}
+
+    explicit DeviceInfo(std::string &&name):
+        type(DeviceType::USB),
+        usb_port_sysfs_name(std::move(name))
+    {}
 };
 
 struct VolumeInfo

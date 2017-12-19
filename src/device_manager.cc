@@ -264,7 +264,7 @@ Devices::AllDevices::add_or_get_device(const char *devlink,
         [this, &devlink, &have_probed_containing_device]
         (const ID &device_id)
         {
-            auto d = std::make_shared<Device>(device_id, devlink, true, tools_);
+            auto d = std::make_shared<Device>(device_id, devlink, true);
             have_probed_containing_device = d->get_state() == Device::State::PROBED;
             return d;
         });
@@ -284,7 +284,7 @@ Devices::AllDevices::add_or_get_volume(std::shared_ptr<Devices::Device> device,
             {
                 return std::make_shared<Device>(device_id,
                                                 mk_root_devlink_name(devlink),
-                                                false, tools_);
+                                                false);
             });
     }
 

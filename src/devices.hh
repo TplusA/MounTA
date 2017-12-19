@@ -59,22 +59,6 @@ class ID
     }
 };
 
-/*!
- * Micro class for improved type-safety and documentation.
- *
- * Avoids mixing up hub ID (passed through this class) and hub port (passed as
- * regular \c int).
- */
-class USBHubID
-{
-  private:
-    int id_;
-
-  public:
-    constexpr explicit USBHubID(unsigned int hub_id) noexcept: id_(hub_id) {}
-    constexpr int get() const noexcept { return id_; }
-};
-
 class Volume;
 
 /*!
@@ -190,26 +174,18 @@ class Device
     State state_;
 
     /*!
-     * ID of the USB root hub ID as provided by the kernel.
+     * Name of the USB port in sysfs.
      */
-    USBHubID root_hub_id_;
-
-    /*!
-     * USB port number as provided by the kernel.
-     */
-    unsigned int hub_port_;
+    std::string usb_port_;
 
   public:
     Device(const Device &) = delete;
     Device &operator=(const Device &) = delete;
 
-    explicit Device(ID device_id, const std::string &devlink, bool is_real,
-                    const Automounter::ExternalTools &tools):
+    explicit Device(ID device_id, const std::string &devlink, bool is_real):
         id_(device_id),
         devlink_name_(devlink),
-        state_(SYNTHETIC),
-        root_hub_id_(0),
-        hub_port_(0)
+        state_(SYNTHETIC)
     {
         if(is_real)
             do_probe();
@@ -220,8 +196,7 @@ class Device
     const ID::value_type get_id() const { return id_.value_; }
     const std::string &get_devlink_name() const { return devlink_name_; }
     const std::string &get_display_name() const { return device_name_; }
-    unsigned int get_usb_hub_id() const { return root_hub_id_.get(); }
-    unsigned int get_usb_port() const { return hub_port_; }
+    const std::string &get_usb_port() const { return usb_port_; }
 
     State get_state() const { return state_; }
 

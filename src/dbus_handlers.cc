@@ -36,7 +36,7 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
 
     GVariantBuilder devices_builder;
     GVariantBuilder volumes_builder;
-    g_variant_builder_init(&devices_builder, G_VARIANT_TYPE("a(qss(uu))"));
+    g_variant_builder_init(&devices_builder, G_VARIANT_TYPE("a(qsss)"));
     g_variant_builder_init(&volumes_builder, G_VARIANT_TYPE("a(ussq)"));
 
     auto am = static_cast<const Automounter::Core *>(user_data);
@@ -49,11 +49,11 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
 
         /* note: this duplicates #announce_new_device() */
         g_variant_builder_add(&devices_builder,
-                              "(qss(uu))",
+                              "(qsss)",
                               device.get_id(),
                               device.get_display_name().c_str(),
                               device.get_working_directory().str().c_str(),
-                              device.get_usb_hub_id(), device.get_usb_port());
+                              device.get_usb_port().c_str());
 
         for(const auto &volume_iter : device)
         {

@@ -45,6 +45,7 @@ struct Parameters
     const char *unmount_tool;
     const char *mpoint_tool;
     const char *blkid_tool;
+    const char *udevadm_tool;
 };
 
 static void show_version_info(void)
@@ -120,6 +121,7 @@ static int process_command_line(int argc, char *argv[], Parameters &parameters)
     parameters.unmount_tool = "/usr/bin/sudo /bin/umount";
     parameters.mpoint_tool = "/usr/bin/mountpoint";
     parameters.blkid_tool = "/usr/bin/sudo /sbin/blkid";
+    parameters.udevadm_tool = "/bin/udevadm";
     parameters.working_directory = "/run/MounTA";
 
 #define CHECK_ARGUMENT() \
@@ -325,7 +327,8 @@ int main(int argc, char *argv[])
         Automounter::ExternalTools::Command(parameters.mount_tool,   mount_options_default),
         Automounter::ExternalTools::Command(parameters.unmount_tool, nullptr),
         Automounter::ExternalTools::Command(parameters.mpoint_tool,  "-q"),
-        Automounter::ExternalTools::Command(parameters.blkid_tool,   nullptr));
+        Automounter::ExternalTools::Command(parameters.blkid_tool,   nullptr),
+        Automounter::ExternalTools::Command(parameters.udevadm_tool, nullptr));
 
     Devices::init(tools);
     cleanup_working_directory(parameters.working_directory, tools);
