@@ -1,3 +1,9 @@
+2018-01-23  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.8 released.
+
+	* Device handling: Some (most?) devices were not mounted.
+
 2017-12-19  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.7 released.
@@ -70,4 +76,4 @@
 	  This is software in alpha phase.
 
 
-Copyright 2015, 2016, 2017 T+A elektroakustik GmbH & Co. KG
+Copyright 2015, 2016, 2017, 2018 T+A elektroakustik GmbH & Co. KG
