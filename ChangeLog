@@ -1,3 +1,13 @@
+2018-03-06  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.9 released.
+
+	* Volume handling: File system "iso9660" is recognized. Volumes
+	  formatted with that file system don't trigger a (harmless) warning
+	  anymore.
+
+	* Misc: Do not error out if markdown is not installed.
+
 2018-01-23  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.8 released.
