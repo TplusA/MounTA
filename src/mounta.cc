@@ -321,6 +321,7 @@ int main(int argc, char *argv[])
         { "ntfs",    mount_options_fatish },
         { "hfs",     mount_options_fatish },
         { "hfsplus", mount_options_fatish },
+        { "iso9660", nullptr },
     });
 
     Automounter::ExternalTools tools(
