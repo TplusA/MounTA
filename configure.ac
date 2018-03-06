@@ -97,6 +97,7 @@ AC_CHECK_FUNCS([memset strdup strerror strtoul])
 
 AM_CONDITIONAL([WITH_CUTTER], [test "x$ac_cv_use_cutter" = "xyes"])
 AM_CONDITIONAL([WITH_VALGRIND], [test "x$enable_valgrind" = "xyes"])
+AM_CONDITIONAL([WITH_MARKDOWN], [test "x$ac_cv_prog_MARKDOWN" != "x"])
 
 AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile Doxyfile])
 AC_CONFIG_FILES([versioninfo.cache])
