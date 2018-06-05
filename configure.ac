@@ -85,6 +85,7 @@ AC_LANG_POP([C++])
 ])
 
 # Checks for typedefs, structures, and compiler characteristics.
+AX_CXX_COMPILE_STDCXX_11([noext])
 AC_CHECK_HEADER_STDBOOL
 AC_C_INLINE
 AC_TYPE_SIZE_T
