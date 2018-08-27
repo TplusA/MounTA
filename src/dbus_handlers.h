@@ -19,7 +19,11 @@
 #ifndef DBUS_HANDLERS_H
 #define DBUS_HANDLERS_H
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wcast-qual"
 #include "mounta_dbus.h"
+#pragma GCC diagnostic pop
 
 #ifdef __cplusplus
 extern "C" {

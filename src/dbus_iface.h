@@ -20,7 +20,11 @@
 #define DBUS_IFACE_H
 
 #include <stdbool.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#pragma GCC diagnostic ignored "-Wcast-qual"
 #include <glib.h>
+#pragma GCC diagnostic pop
 
 /*!
  * \addtogroup dbus DBus handling

@@ -20,7 +20,11 @@
 #define DBUS_IFACE_DEEP_H
 
 #include "dbus_iface.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-qual"
 #include "mounta_dbus.h"
+#pragma GCC diagnostic pop
+
 
 #ifdef __cplusplus
 extern "C" {

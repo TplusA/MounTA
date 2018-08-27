@@ -23,8 +23,11 @@
 #include <cstring>
 #include <iostream>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include <glib-object.h>
 #include <glib-unix.h>
+#pragma GCC diagnostic pop
 
 #include "fdevents.hh"
 #include "automounter.hh"
