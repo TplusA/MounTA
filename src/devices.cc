@@ -24,6 +24,7 @@
 #include <cstring>
 #include <sstream>
 #include <dirent.h>
+#include "os.h"
 
 #include "devices.hh"
 #include "devices_os.hh"
@@ -156,8 +157,28 @@ bool Devices::Volume::mk_mountpoint_directory()
 
 bool Devices::Volume::mount(const Automounter::FSMountOptions &mount_options)
 {
-    return mountpoint_.mount(devname_,
-                             mount_options.get_options(fstype_));
+    if (!mountpoint_.mount(devname_, mount_options.get_options(fstype_)))
+        return false;
+
+    if (!symlink_directory_.empty())
+    {
+        std::string linkabspath = symlink_directory_ + "/" + label_;
+        auto file_exists=[](const std::string& s)->bool {
+            struct stat buffer;
+            return os_stat(s.c_str(), &buffer)==0;
+        };
+        for(unsigned int i=2; file_exists(linkabspath); ++i)
+            linkabspath = linkabspath + "-" + std::to_string(i);
+
+        msg_info("Creating symlink %s to %s", linkabspath.c_str(), mountpoint_.str().c_str());
+        //TODO: Create os_symlink for testing.
+        if (symlink(mountpoint_.str().c_str(), linkabspath.c_str())!=0)
+            msg_error(errno, LOG_ERR, "Failed to create symbolic link.");
+        else
+            symlink_ = linkabspath;
+    }
+
+    return true;
 }
 
 void Devices::Volume::set_mounted()
@@ -185,4 +206,18 @@ void Devices::Volume::set_eol_state_and_cleanup(State state,
 {
     state_ = state;
     mountpoint_.cleanup();
+
+    if (!symlink_.empty())
+    {
+      msg_info("Deleting symlink %s", symlink_.c_str());
+      if (os_file_delete(symlink_.c_str())==0)
+          symlink_.clear();
+      else
+          msg_error(errno, LOG_ERR, "Failed to delete symbolic link.");
+    }
+}
+
+Devices::Volume::~Volume()
+{
+    set_eol_state_and_cleanup(UNUSABLE, true);
 }

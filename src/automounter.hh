@@ -79,10 +79,11 @@ class Core
     Core(Core &&) = default;
 
     explicit Core(const char *working_directory, const ExternalTools &tools,
-                  const FSMountOptions &mount_options):
+                  const FSMountOptions &mount_options,
+                  const std::string& symlink_directory):
         working_directory_(working_directory),
         mount_options_(mount_options),
-        devman_(tools)
+        devman_(tools, symlink_directory)
     {}
 
     void handle_new_device(const char *device_path);

@@ -304,7 +304,8 @@ Devices::AllDevices::add_or_get_volume(std::shared_ptr<Devices::Device> device,
 
     auto volume = std::unique_ptr<Volume>(
                         new Volume(device, volinfo.idx,
-                                   label, volinfo.fstype, devname, tools_));
+                                   label, volinfo.fstype, devname, tools_,
+                                   symlink_directory_));
 
     existing_volume = volume.get();
 

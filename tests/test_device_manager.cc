@@ -81,7 +81,7 @@ void cut_setup(void)
     mock_devices_os->init();
     mock_devices_os_singleton = mock_devices_os;
 
-    devs = new Devices::AllDevices(tools);
+    devs = new Devices::AllDevices(tools, std::string());
     cppcut_assert_not_null(devs);
 }
 

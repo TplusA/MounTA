@@ -285,6 +285,16 @@ class Volume
      */
     Automounter::Mountpoint mountpoint_;
 
+    /*!
+     * Directory for label symlinks to mountpoints of volumes. Ignored if empty.
+     */
+    const std::string symlink_directory_;
+
+    /*!
+     * Symbolic link to mountpoint that should be removed on cleaning.
+     */
+    std::string symlink_;
+
   public:
     Volume(const Volume &) = delete;
     Volume &operator=(const Volume &) = delete;
@@ -292,15 +302,18 @@ class Volume
     explicit Volume(std::shared_ptr<Device> containing_device,
                     int idx, const std::string &label,
                     const std::string &fstype, const std::string &devname,
-                    const Automounter::ExternalTools &tools):
+                    const Automounter::ExternalTools &tools,
+                    const std::string& symlink_directory):
         containing_device_(containing_device),
         index_(idx),
         state_(PENDING),
         label_(label),
         fstype_(fstype),
         devname_(devname),
-        mountpoint_(tools)
+        mountpoint_(tools),
+        symlink_directory_(symlink_directory)
     {}
+    ~Volume();
 
     std::shared_ptr<const Device> get_device() const { return containing_device_; }
     int get_index() const { return index_; }

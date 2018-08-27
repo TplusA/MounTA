@@ -44,6 +44,7 @@ struct Parameters
     bool run_in_foreground;
     bool connect_to_session_dbus;
     const char *working_directory;
+    const char *symlink_directory;
     const char *mount_tool;
     const char *unmount_tool;
     const char *mpoint_tool;
@@ -126,6 +127,7 @@ static int process_command_line(int argc, char *argv[], Parameters &parameters)
     parameters.blkid_tool = "/usr/bin/sudo /sbin/blkid";
     parameters.udevadm_tool = "/bin/udevadm";
     parameters.working_directory = "/run/MounTA";
+    parameters.symlink_directory = "/run/mount-by-label";
 
 #define CHECK_ARGUMENT() \
     do \
@@ -339,7 +341,8 @@ int main(int argc, char *argv[])
 
     auto event_data =
         std::make_pair(Automounter::Core(parameters.working_directory, tools,
-                                         mount_options),
+                                         mount_options,
+                                         parameters.symlink_directory),
                        loop);
 
     if(dbus_setup(loop, parameters.connect_to_session_dbus, &event_data.first) < 0)

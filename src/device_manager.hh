@@ -47,14 +47,16 @@ class AllDevices
   private:
     DevContainerType devices_;
     const Automounter::ExternalTools &tools_;
+    const std::string symlink_directory_;
 
   public:
     AllDevices(const AllDevices &) = delete;
     AllDevices &operator=(const AllDevices &) = delete;
     AllDevices(AllDevices &&) = default;
 
-    explicit AllDevices(const Automounter::ExternalTools &tools):
-        tools_(tools)
+    explicit AllDevices(const Automounter::ExternalTools &tools, const std::string& symlink_directory):
+        tools_(tools),
+        symlink_directory_(symlink_directory)
     {}
 
     ~AllDevices();
