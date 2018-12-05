@@ -167,7 +167,6 @@ bool FdEvents::process()
 
     for(const uint8_t *ptr = event_buffer;
         ptr < event_buffer + len;
-        // cppcheck-suppress nullPointer
         ptr += sizeof(*event) + event->len)
     {
         event = reinterpret_cast<const struct inotify_event *>(ptr);
