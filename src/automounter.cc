@@ -255,6 +255,13 @@ void Automounter::Core::handle_removed_device(const char *device_path)
                 tdbus_moun_ta_emit_device_removed(dbus_get_mounta_iface(),
                                                 device.get_id(),
                                                 device.get_working_directory().str().c_str());
+        },
+        [] (const Devices::Device &device)
+        {
+            if(device.get_working_directory().exists())
+                tdbus_moun_ta_emit_device_will_be_removed(dbus_get_mounta_iface(),
+                                                          device.get_id(),
+                                                          device.get_working_directory().str().c_str());
         });
 }
 

@@ -73,9 +73,11 @@ class AllDevices
     }
 
     bool remove_entry(const char *devlink,
-                      const std::function<void(const Device &)> &removal_notification);
+                      const std::function<void(const Device &)> &after_removal_notification = nullptr,
+                      const std::function<void(const Device &)> &before_removal_notification = nullptr);
     bool remove_entry(Devices::AllDevices::DevContainerType::const_iterator devices_iter,
-                      const std::function<void(const Device &)> &removal_notification);
+                      const std::function<void(const Device &)> &after_removal_notification = nullptr,
+                      const std::function<void(const Device &)> &before_removal_notification = nullptr);
 
     decltype(devices_)::const_iterator begin() const { return devices_.begin(); };
     decltype(devices_)::const_iterator end() const   { return devices_.end(); };
