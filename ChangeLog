@@ -1,3 +1,12 @@
+2019-02-05  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.10 released.
+
+	* Device handling: A D-Bus signal is emitted just before a device is
+	  about to be removed. This gives other processes the chance to close
+	  any open files on file systems on that device so that device removal
+	  can succeed in a clean way.
+
 2018-12-05  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.10 released.
@@ -95,4 +104,4 @@
 	  This is software in alpha phase.
 
 
-Copyright 2015, 2016, 2017, 2018 T+A elektroakustik GmbH & Co. KG
+Copyright 2015, 2016, 2017, 2018, 2019 T+A elektroakustik GmbH & Co. KG
