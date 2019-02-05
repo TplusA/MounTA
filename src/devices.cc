@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -24,7 +24,7 @@
 #include <cstring>
 #include <sstream>
 #include <dirent.h>
-#include "os.h"
+#include "os.hh"
 
 #include "devices.hh"
 #include "devices_os.hh"
@@ -164,6 +164,7 @@ bool Devices::Volume::mount(const Automounter::FSMountOptions &mount_options)
     {
         std::string linkabspath = symlink_directory_ + "/" + label_;
         auto file_exists=[](const std::string& s)->bool {
+            OS::SuppressErrorsGuard g;
             struct stat buffer;
             return os_stat(s.c_str(), &buffer)==0;
         };
