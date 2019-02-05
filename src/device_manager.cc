@@ -173,15 +173,18 @@ Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
 }
 
 bool Devices::AllDevices::remove_entry(const char *devlink,
-                                       const std::function<void(const Device &)> &removal_notification)
+                                       const std::function<void(const Device &)> &after_removal_notification,
+                                       const std::function<void(const Device &)> &before_removal_notification)
 {
     log_assert(devlink != nullptr);
     return remove_entry(get_device_iter_by_devlink(devices_, devlink),
-                        removal_notification);
+                        after_removal_notification,
+                        before_removal_notification);
 }
 
 bool Devices::AllDevices::remove_entry(Devices::AllDevices::DevContainerType::const_iterator devices_iter,
-                                       const std::function<void(const Device &)> &removal_notification)
+                                       const std::function<void(const Device &)> &after_removal_notification,
+                                       const std::function<void(const Device &)> &before_removal_notification)
 {
     if(devices_iter == devices_.end())
     {
@@ -189,10 +192,13 @@ bool Devices::AllDevices::remove_entry(Devices::AllDevices::DevContainerType::co
         return false;
     }
 
+    if(before_removal_notification)
+        before_removal_notification(*devices_iter->second);
+
     devices_iter->second->drop_volumes();
 
-    if(removal_notification != nullptr)
-        removal_notification(*devices_iter->second);
+    if(after_removal_notification)
+        after_removal_notification(*devices_iter->second);
 
     devices_.erase(devices_iter);
 

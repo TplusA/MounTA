@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015, 2017  T+A elektroakustik GmbH & Co. KG
+# Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
 #
 # This file is part of MounTA.
 #
@@ -29,7 +29,7 @@ mounta_SOURCES = \
     autodir.hh external_tools.hh \
     dbus_iface.c dbus_iface.h dbus_iface_deep.h \
     dbus_handlers.cc dbus_handlers.h \
-    os.c os.h
+    os.c os.h os.hh
 
 DBUS_IFACES = $(top_srcdir)/dbus_interfaces
 
