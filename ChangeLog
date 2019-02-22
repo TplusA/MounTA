@@ -1,6 +1,6 @@
 2019-02-05  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
-	* Version 0.10 released.
+	* Version 0.11 released.
 
 	* Device handling: A D-Bus signal is emitted just before a device is
 	  about to be removed. This gives other processes the chance to close
