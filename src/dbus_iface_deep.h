@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2018, 2019  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -20,11 +20,14 @@
 #define DBUS_IFACE_DEEP_H
 
 #include "dbus_iface.h"
+
 #pragma GCC diagnostic push
+#ifdef __cplusplus
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#endif /* __cplusplus */
 #pragma GCC diagnostic ignored "-Wcast-qual"
 #include "mounta_dbus.h"
 #pragma GCC diagnostic pop
-
 
 #ifdef __cplusplus
 extern "C" {
