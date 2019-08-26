@@ -193,7 +193,7 @@ class Device
 
     ~Device();
 
-    const ID::value_type get_id() const { return id_.value_; }
+    ID::value_type get_id() const { return id_.value_; }
     const std::string &get_devlink_name() const { return devlink_name_; }
     const std::string &get_display_name() const { return device_name_; }
     const std::string &get_usb_port() const { return usb_port_; }
