@@ -124,7 +124,7 @@ new_device_with_expectations(const DevNames &device_names,
     static const Devices::DeviceInfo
         fake_device_info("/sys/devices/platform/bcm2708_usb/usb1/1-1/1-1.5/1-1.5:1.0");
 
-    mock_os->expect_os_resolve_symlink(device_names.block_device_name, device_names.device_identifier);
+    mock_os->expect_os_resolve_symlink(device_names.block_device_name, 0, device_names.device_identifier);
 
     if(!device_exists_already)
     {
@@ -184,7 +184,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
         .fstype = volume_names.volume_fstype,
     };
 
-    mock_os->expect_os_resolve_symlink(volume_names.block_device_name, volume_names.device_identifier);
+    mock_os->expect_os_resolve_symlink(volume_names.block_device_name, 0, volume_names.device_identifier);
     mock_devices_os->expect_get_volume_information(volume_names.block_device_name, &fake_info);
 
     const Devices::Volume *vol;
@@ -215,7 +215,7 @@ new_volume_with_expectations(int idx, const DevNames &volume_names,
         .fstype = volume_names.volume_fstype,
     };
 
-    mock_os->expect_os_resolve_symlink(volume_names.block_device_name, volume_names.device_identifier);
+    mock_os->expect_os_resolve_symlink(volume_names.block_device_name, 0, volume_names.device_identifier);
     mock_devices_os->expect_get_volume_information(volume_names.block_device_name, &fake_info);
 
     Devices::Volume *vol;
