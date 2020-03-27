@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -28,7 +28,7 @@
 #include "dbus_iface.h"
 #include "dbus_iface_deep.h"
 #include "dbus_handlers.h"
-#include "mounta_dbus.h"
+#include "de_tahifi_mounta.h"
 #include "messages.h"
 
 struct dbus_data

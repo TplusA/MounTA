@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+# Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
 #
 # This file is part of MounTA.
 #
@@ -24,7 +24,7 @@ ACLOCAL_AMFLAGS = -I ../m4
 bin_PROGRAMS = mounta
 
 mounta_SOURCES = \
-    mounta.cc messages.h messages.c \
+    mounta.cc messages.h messages.c backtrace.h backtrace.c \
     devices.hh devices_util.h device_manager.hh \
     devices_os.hh devices_os.cc \
     fdevents.hh fdevents.cc \
@@ -48,7 +48,7 @@ noinst_LTLIBRARIES = \
 
 mounta_LDADD = $(noinst_LTLIBRARIES) $(MOUNTA_DEPENDENCIES_LIBS)
 
-nodist_libmounta_dbus_la_SOURCES = mounta_dbus.c mounta_dbus.h
+nodist_libmounta_dbus_la_SOURCES = de_tahifi_mounta.c de_tahifi_mounta.h
 libmounta_dbus_la_CFLAGS = $(CRELAXEDWARNINGS)
 
 libdevice_manager_la_SOURCES = \
@@ -61,17 +61,17 @@ libdevice_manager_la_CXXFLAGS = $(AM_CXXFLAGS)
 
 BUILT_SOURCES = \
     $(nodist_libmounta_dbus_la_SOURCES) \
-    de_tahifi_mounta.h \
-    de_tahifi_mounta.md \
-    mounta_dbus.stamp
+    de_tahifi_mounta-doc.h \
+    de_tahifi_mounta-doc.md \
+    de_tahifi_mounta.stamp
 
 CLEANFILES = $(BUILT_SOURCES)
 
-de_tahifi_mounta.h: mounta_dbus.stamp
-de_tahifi_mounta.md: mounta_dbus.stamp
-mounta_dbus.c: mounta_dbus.stamp
-mounta_dbus.h: mounta_dbus.stamp
-mounta_dbus.stamp: $(DBUS_IFACES)/de_tahifi_mounta.xml
-	$(GDBUS_CODEGEN) --generate-c-code=mounta_dbus --c-namespace tdbus --interface-prefix de.tahifi. $<
-	$(DBUS_IFACES)/extract_documentation.py -i $< -o de_tahifi_mounta.md -H de_tahifi_mounta.h -c tdbus -s de.tahifi. -n "$(PACKAGE_NAME)"
+de_tahifi_mounta-doc.h: de_tahifi_mounta.stamp
+de_tahifi_mounta-doc.md: de_tahifi_mounta.stamp
+de_tahifi_mounta.c: de_tahifi_mounta.stamp
+de_tahifi_mounta.h: de_tahifi_mounta.stamp
+de_tahifi_mounta.stamp: $(DBUS_IFACES)/de_tahifi_mounta.xml
+	$(GDBUS_CODEGEN) --generate-c-code=de_tahifi_mounta --c-namespace tdbus --interface-prefix de.tahifi. $<
+	$(DBUS_IFACES)/extract_documentation.py -i $< -o de_tahifi_mounta-doc.md -H de_tahifi_mounta-doc.h -c tdbus -s de.tahifi. -n "$(PACKAGE_NAME)"
 	touch $@

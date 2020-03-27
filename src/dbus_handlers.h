@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2018, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2018, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -27,7 +27,7 @@
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #endif /* __cplusplus */
 #pragma GCC diagnostic ignored "-Wcast-qual"
-#include "mounta_dbus.h"
+#include "de_tahifi_mounta.h"
 #pragma GCC diagnostic pop
 
 #ifdef __cplusplus
