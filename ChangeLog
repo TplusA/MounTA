@@ -1,3 +1,13 @@
+2020-04-23  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 0.13 released.
+
+	* Misc: Support Meson build system.
+
+	* Misc: Unit tests are implemented using of doctest instead of cutter.
+
+	* Misc: Fix a few warnings reported by cppcheck.
+
 2019-12-05  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.12 released.
@@ -112,4 +122,4 @@
 	  This is software in alpha phase.
 
 
-Copyright 2015, 2016, 2017, 2018, 2019 T+A elektroakustik GmbH & Co. KG
+Copyright 2015--2020 T+A elektroakustik GmbH & Co. KG
