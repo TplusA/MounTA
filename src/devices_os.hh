@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -40,6 +40,11 @@ struct DeviceInfo
     DeviceType type;
     std::string usb_port_sysfs_name;
 
+    DeviceInfo(const DeviceInfo &) = delete;
+    DeviceInfo(DeviceInfo &&) = default;
+    DeviceInfo &operator=(const DeviceInfo &) = default;
+    DeviceInfo &operator=(DeviceInfo &&) = default;
+
     DeviceInfo(): type(DeviceType::UNKNOWN) {}
 
     explicit DeviceInfo(std::string &&name):
@@ -53,6 +58,19 @@ struct VolumeInfo
     int idx;
     std::string label;
     std::string fstype;
+
+    VolumeInfo(const VolumeInfo &) = delete;
+    VolumeInfo(VolumeInfo &&) = default;
+    VolumeInfo &operator=(const VolumeInfo &) = default;
+    VolumeInfo &operator=(VolumeInfo &&) = default;
+
+    explicit VolumeInfo(): idx(-1) {}
+
+    explicit VolumeInfo(int vol_idx, std::string &&vol_label, std::string &&vol_fstype):
+        idx(vol_idx),
+        label(std::move(vol_label)),
+        fstype(std::move(vol_fstype))
+    {}
 };
 
 /*!

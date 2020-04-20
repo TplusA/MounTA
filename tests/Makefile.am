@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2015, 2019  T+A elektroakustik GmbH & Co. KG
+# Copyright (C) 2015, 2019, 2020  T+A elektroakustik GmbH & Co. KG
 #
 # This file is part of MounTA.
 #
@@ -19,50 +19,54 @@
 # MA  02110-1301, USA.
 #
 
-if WITH_CUTTER
-TESTS = run_test.sh
+if WITH_DOCTEST
+check_PROGRAMS = test_device_manager
+
+TESTS = run_tests.sh
 
 if WITH_VALGRIND
+AM_TESTS_ENVIRONMENT =  VALGRIND="$(VALGRIND)"
+AM_TESTS_ENVIRONMENT += VALGRIND_OPTIONS="--suppressions=$(srcdir)/valgrind.suppressions"
 TESTS += valgrind.sh
 endif
 
-AM_TESTS_ENVIRONMENT = CUTTER="$(CUTTER)" XSLTPROC="$(XSLTPROC)" VALGRIND="$(VALGRIND)"
+EXTRA_DIST = run_tests.sh valgrind.sh valgrind.suppressions
+CLEANFILES = *.junit.xml *.valgrind.xml
 
-AM_LDFLAGS = -module -rpath $(libdir) -avoid-version -no-undefined
-
-DBUS_IFACES = $(top_srcdir)/dbus_interfaces
-
-AM_CPPFLAGS = $(CPPCUTTER_CFLAGS)
+AM_CPPFLAGS = -DDOCTEST_CONFIG_TREAT_CHAR_STAR_AS_STRING
 AM_CPPFLAGS += -I$(top_srcdir)/src -I$(top_builddir)/src
-AM_CPPFLAGS += -I$(DBUS_IFACES)
-
+AM_CPPFLAGS += -I$(top_srcdir)/dbus_interfaces
 AM_CFLAGS = $(CWARNINGS)
-
 AM_CXXFLAGS = $(CXXWARNINGS)
 
-LIBS += $(CPPCUTTER_LIBS)
+noinst_LTLIBRARIES = libtestrunner.la
 
-check_LTLIBRARIES = \
-    test_device_manager.la
+libtestrunner_la_SOURCES = testrunner.cc
 
-test_device_manager_la_SOURCES = \
-    test_device_manager.cc mock_expectation.hh \
+test_device_manager_SOURCES = \
+    test_device_manager.cc \
     mock_devices_os.hh mock_devices_os.cc \
     mock_messages.hh mock_messages.cc \
-    mock_os.hh mock_os.cc
-test_device_manager_la_LIBADD = $(top_builddir)/src/libdevice_manager.la
-test_device_manager_la_CFLAGS = $(AM_CFLAGS) $(MOUNTA_DEPENDENCIES_CFLAGS)
-test_device_manager_la_CXXFLAGS = $(AM_CXXFLAGS) $(MOUNTA_DEPENDENCIES_CFLAGS)
+    mock_os.hh mock_os.cc \
+    mock_backtrace.hh mock_backtrace.cc \
+    mock_expectation.hh
+test_device_manager_LDADD = \
+    libtestrunner.la \
+    $(top_builddir)/src/libdevice_manager.la
+test_device_manager_CPPFLAGS = $(AM_CPPFLAGS) $(MOUNTA_DEPENDENCIES_CFLAGS)
+test_device_manager_CXXFLAGS = $(AM_CXXFLAGS) $(MOUNTA_DEPENDENCIES_CFLAGS)
 
-CLEANFILES = test_report.xml test_report_junit.xml valgrind.xml
+doctest: $(check_PROGRAMS)
+	for p in $(check_PROGRAMS); do \
+	    if ./$$p $(DOCTEST_EXTRA_OPTIONS); then :; \
+	    else \
+	        echo "*****"; \
+	        echo "***** Running $$p again in gdb due to failures"; \
+	        echo "*****"; \
+	        gdb -ex run --args ./$$p $(DOCTEST_EXTRA_OPTIONS); \
+	    fi; \
+	done
 
-EXTRA_DIST = cutter2junit.xslt
-EXTRA_DIST += cutter-1_2_4.supp
-
-check-local: check-TESTS
-	@if $(GREP) -w cutter $(TEST_LOGS); then \
-	    echo "Unit tests failed (check log)"; \
-	    exit 1; \
-	fi
-
+doctest-valgrind: $(check_PROGRAMS)
+	for p in $(check_PROGRAMS); do $(VALGRIND) --leak-check=full --show-reachable=yes --error-limit=no ./$$p $(DOCTEST_EXTRA_OPTIONS); done
 endif

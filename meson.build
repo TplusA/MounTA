@@ -21,7 +21,8 @@
 
 project('MounTA', ['cpp', 'c'],
     version: '0.12',
-    default_options: ['warning_level=3', 'cpp_std=c++14', 'buildtype=plain'])
+    default_options: ['warning_level=3', 'cpp_std=c++14', 'buildtype=plain']
+)
 
 PACKAGE = 'mounta'
 

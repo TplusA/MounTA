@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -25,26 +25,128 @@
 #include "devices_os.hh"
 #include "mock_expectation.hh"
 
-class MockDevicesOs
+namespace MockDevicesOs
+{
+
+/*! Base class for expectations. */
+class Expectation
 {
   public:
-    class Expectation;
-    typedef MockExpectationsTemplate<Expectation> MockExpectations;
-    MockExpectations *expectations_;
-
-    MockDevicesOs(const MockDevicesOs &) = delete;
-    MockDevicesOs &operator=(const MockDevicesOs &) = delete;
-
-    explicit MockDevicesOs();
-    ~MockDevicesOs();
-
-    void init();
-    void check() const;
-
-    void expect_get_device_information(const std::string &devlink, const Devices::DeviceInfo *info);
-    void expect_get_volume_information(const std::string &devname, const Devices::VolumeInfo *info);
+    Expectation(const Expectation &) = delete;
+    Expectation(Expectation &&) = default;
+    Expectation &operator=(const Expectation &) = delete;
+    Expectation &operator=(Expectation &&) = default;
+    Expectation() {}
+    virtual ~Expectation() {}
 };
 
-extern MockDevicesOs *mock_devices_os_singleton;
+class Mock
+{
+  private:
+    MockExpectationsTemplate<Expectation> expectations_;
+
+  public:
+    Mock(const Mock &) = delete;
+    Mock &operator=(const Mock &) = delete;
+
+    explicit Mock():
+        expectations_("MockDevicesOs")
+    {}
+
+    ~Mock() = default;
+
+    void expect(std::unique_ptr<Expectation> expectation)
+    {
+        expectations_.add(std::move(expectation));
+    }
+
+    void expect(Expectation *expectation)
+    {
+        expectations_.add(std::unique_ptr<Expectation>(expectation));
+    }
+
+    template <typename T>
+    void ignore(std::unique_ptr<T> default_result)
+    {
+        expectations_.ignore<T>(std::move(default_result));
+    }
+
+    template <typename T>
+    void ignore(T *default_result)
+    {
+        expectations_.ignore<T>(std::unique_ptr<Expectation>(default_result));
+    }
+
+    template <typename T>
+    void allow() { expectations_.allow<T>(); }
+
+    void done() const { expectations_.done(); }
+
+    template <typename T, typename ... Args>
+    auto check_next(Args ... args) -> decltype(std::declval<T>().check(args...))
+    {
+        return expectations_.check_and_advance<T, decltype(std::declval<T>().check(args...))>(args...);
+    }
+
+    template <typename T>
+    const T &next(const char *caller)
+    {
+        return expectations_.next<T>(caller);
+    }
+};
+
+class GetDeviceInformation: public Expectation
+{
+  private:
+    const bool retval_;
+    const std::string devlink_;
+    const Devices::DeviceInfo *const devinfo_;
+
+  public:
+    explicit GetDeviceInformation(std::string &&devlink, const Devices::DeviceInfo *info):
+        retval_(info != nullptr),
+        devlink_(std::move(devlink)),
+        devinfo_(info)
+    {}
+
+    bool check(const std::string &devlink, Devices::DeviceInfo &info) const
+    {
+        CHECK(devlink == devlink_);
+
+        if(devinfo_ != nullptr)
+            info = *devinfo_;
+
+        return retval_;
+    }
+};
+
+class GetVolumeInformation: public Expectation
+{
+  private:
+    const bool retval_;
+    const std::string devname_;
+    const Devices::VolumeInfo *const volinfo_;
+
+  public:
+    explicit GetVolumeInformation(std::string &&devname, const Devices::VolumeInfo *info):
+        retval_(info != nullptr),
+        devname_(std::move(devname)),
+        volinfo_(info)
+    {}
+
+    bool check(const std::string &devname, Devices::VolumeInfo &info) const
+    {
+        CHECK(devname == devname_);
+
+        if(volinfo_ != nullptr)
+            info = *volinfo_;
+
+        return retval_;
+    }
+};
+
+extern Mock *singleton;
+
+}
 
 #endif /* !MOCK_DEVICES_OS_HH */

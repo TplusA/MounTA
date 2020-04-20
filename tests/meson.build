@@ -19,28 +19,24 @@
 # MA  02110-1301, USA.
 #
 
-cutter_dep = dependency('cppcutter', required: false)
 compiler = meson.get_compiler('cpp')
 
-if not(compiler.has_header('cutter.h', dependencies: cutter_dep) and \
-       compiler.has_header('cppcutter.h', dependencies: cutter_dep))
+if not compiler.has_header('doctest.h')
     subdir_done()
 endif
 
-cutter_wrap = find_program('cutter_wrap.sh')
-
-cutter_wrap_args = [
-    find_program('cutter').path(), find_program('xsltproc').path(),
-    meson.current_build_dir(), meson.current_source_dir()
-]
-
-device_manager_tests = shared_module('test_device_manager',
-    ['test_device_manager.cc',
-     'mock_devices_os.cc', 'mock_messages.cc', 'mock_os.cc'],
-    dependencies: [cutter_dep, config_h],
-    link_with: device_manager_lib
+testrunner_lib = static_library('testrunner', 'testrunner.cc',
+    cpp_args: '-DDOCTEST_CONFIG_TREAT_CHAR_STAR_AS_STRING',
+    include_directories: '../src'
 )
+
 test('Device Manager',
-    cutter_wrap, args: [cutter_wrap_args, device_manager_tests.full_path()],
-    depends: device_manager_tests
+    executable('test_device_manager',
+      ['test_device_manager.cc', 'mock_devices_os.cc', 'mock_messages.cc', 'mock_os.cc', 'mock_backtrace.cc'],
+      include_directories: '../src',
+      link_with: [testrunner_lib, device_manager_lib],
+      cpp_args: '-DDOCTEST_CONFIG_TREAT_CHAR_STAR_AS_STRING',
+      build_by_default: false),
+    workdir: meson.current_build_dir(),
+    args: ['--reporters=strboxml', '--out=test_device_manager.junit.xml']
 )
