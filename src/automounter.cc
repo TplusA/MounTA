@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015--2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015--2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -237,10 +237,9 @@ void Automounter::Core::handle_new_device(const char *device_path)
 
         if(dev->mk_working_directory(os.str()))
             announce_new_device(*dev);
-    }
 
-    if(have_probed_dev)
         mount_all_pending_volumes(*dev, mount_options_);
+    }
     else if(vol != nullptr)
         try_mount_volume(*vol, mount_options_);
 }

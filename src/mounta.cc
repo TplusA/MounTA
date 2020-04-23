@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -82,10 +82,9 @@ static int setup(const Parameters &parameters, GMainLoop *&loop)
     msg_enable_syslog(!parameters.run_in_foreground);
 
     if(!parameters.run_in_foreground)
+    {
         openlog("mounta", LOG_PID, LOG_DAEMON);
 
-    if(!parameters.run_in_foreground)
-    {
         if(daemon(0, 0) < 0)
         {
             msg_error(errno, LOG_EMERG, "Failed to run as daemon");

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -208,6 +208,7 @@ static bool try_get_value(const std::string &key, std::string &value,
 
     std::string old_value(std::move(value));
 
+    value = "";  /* we have moved from value: better safe than sorry */
     value.assign(str + value_begin, value_beyond - value_begin);
 
     if(!old_value.empty())
