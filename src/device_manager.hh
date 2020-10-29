@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -22,6 +22,7 @@
 #ifndef DEVICE_MANAGER_HH
 #define DEVICE_MANAGER_HH
 
+#include <stdexcept>
 #include <functional>
 
 #include "devices.hh"
