@@ -1,3 +1,16 @@
+2020-10-29  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 1.0 released.
+
+	* hfsplus: Fix mounting of HFS+ and HFS partitions. This has been
+	  broken since v0.10.
+
+	* ntfs: Fix warning thrown by ntfs driver due to unsupported "utf8"
+	  option which has been in use since v0.10. It worked, but we use
+	  "nls=utf8" now as recommended by the warning message.
+
+	* Misc: Fix various compiler warnings.
+
 2020-04-23  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 0.13 released.
