@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -75,11 +75,7 @@ void Automounter::Directory::cleanup()
         if(i < 20)
         {
             /* wait for 250 ms */
-            static const struct timespec t =
-            {
-                .tv_sec = 0,
-                .tv_nsec = 250L * 1000L * 1000L,
-            };
+            static const struct timespec t = { 0, 250L * 1000L * 1000L, };
 
             os_nanosleep(&t);
         }
