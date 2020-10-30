@@ -312,7 +312,7 @@ int main(int argc, char *argv[])
     static constexpr const char mount_options_default[] = "-o ro,noexec,nosuid,nodev,user";
 
     static constexpr const char mount_options_ext234[] = "-o errors=continue";
-    static constexpr const char mount_options_fatish[] = "-o umask=222,utf8";
+    static constexpr const char mount_options_fat[] = "-o umask=222,utf8";
     static constexpr const char mount_options_ntfs[] = "-o umask=222,nls=utf8";
     static constexpr const char mount_options_hfs[] = "-o umask=222";
 
@@ -325,8 +325,8 @@ int main(int argc, char *argv[])
         { "jfs",     mount_options_ext234 },
         { "xfs",     nullptr },
         { "btrfs",   nullptr },
-        { "msdos",   mount_options_fatish },
-        { "vfat",    mount_options_fatish },
+        { "msdos",   mount_options_fat },
+        { "vfat",    mount_options_fat },
         { "ntfs",    mount_options_ntfs },
         { "hfs",     mount_options_hfs },
         { "hfsplus", mount_options_hfs },
