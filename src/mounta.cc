@@ -313,6 +313,7 @@ int main(int argc, char *argv[])
 
     static constexpr const char mount_options_ext234[] = "-o errors=continue";
     static constexpr const char mount_options_fatish[] = "-o umask=222,utf8";
+    static constexpr const char mount_options_ntfs[] = "-o umask=222,nls=utf8";
     static constexpr const char mount_options_hfs[] = "-o umask=222";
 
     static const Automounter::FSMountOptions
@@ -326,7 +327,7 @@ int main(int argc, char *argv[])
         { "btrfs",   nullptr },
         { "msdos",   mount_options_fatish },
         { "vfat",    mount_options_fatish },
-        { "ntfs",    mount_options_fatish },
+        { "ntfs",    mount_options_ntfs },
         { "hfs",     mount_options_hfs },
         { "hfsplus", mount_options_hfs },
         { "iso9660", nullptr },
