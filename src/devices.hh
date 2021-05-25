@@ -292,7 +292,7 @@ class Volume
     /*!
      * UUID of the partiton block device.
      */
-    std::string uuid_;
+    const std::string uuid_;
 
     /*!
      * Full path to this volume's mountpoint.
@@ -314,7 +314,7 @@ class Volume
     Volume &operator=(const Volume &) = delete;
 
     explicit Volume(std::shared_ptr<Device> containing_device,
-                    int idx, const std::string &label,
+                    int idx, const std::string &label, const std::string &uuid,
                     const std::string &fstype, const std::string &devname,
                     const Automounter::ExternalTools &tools,
                     const std::string& symlink_directory):
@@ -324,6 +324,7 @@ class Volume
         label_(label),
         fstype_(fstype),
         devname_(devname),
+        uuid_(uuid),
         mountpoint_(tools),
         symlink_directory_(symlink_directory)
     {}

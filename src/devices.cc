@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -137,7 +137,8 @@ bool Devices::Device::do_probe()
         break;
 
       case DeviceType::USB:
-        usb_port_ = devinfo.usb_port_sysfs_name;
+        usb_port_ = std::move(devinfo.usb_port_sysfs_name);
+        uuid_ = std::move(devinfo.device_uuid);
         state_ = PROBED;
         return true;
     }
