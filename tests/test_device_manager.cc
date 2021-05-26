@@ -108,8 +108,8 @@ static Automounter::ExternalTools tools(
             Automounter::ExternalTools::Command("/bin/mount",          nullptr),
             Automounter::ExternalTools::Command("/bin/umount",         nullptr),
             Automounter::ExternalTools::Command("/usr/bin/mountpoint", "-q"),
-            Automounter::ExternalTools::Command("/sbin/blkid",         nullptr),
-            Automounter::ExternalTools::Command("/bin/udevadm",        nullptr));
+            Automounter::ExternalTools::Command("/bin/udevadm",        nullptr)
+);
 
 class Fixture
 {
