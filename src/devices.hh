@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -181,6 +181,11 @@ class Device
      */
     std::string usb_port_;
 
+    /*!
+     * UUID of the whole block device.
+     */
+    std::string uuid_;
+
   public:
     Device(const Device &) = delete;
     Device &operator=(const Device &) = delete;
@@ -200,6 +205,7 @@ class Device
     const std::string &get_devlink_name() const { return devlink_name_; }
     const std::string &get_display_name() const { return device_name_; }
     const std::string &get_usb_port() const { return usb_port_; }
+    const std::string &get_device_uuid() const { return uuid_; }
 
     State get_state() const { return state_; }
 
@@ -284,6 +290,11 @@ class Volume
     std::string devname_;
 
     /*!
+     * UUID of the partiton block device.
+     */
+    const std::string uuid_;
+
+    /*!
      * Full path to this volume's mountpoint.
      */
     Automounter::Mountpoint mountpoint_;
@@ -303,7 +314,7 @@ class Volume
     Volume &operator=(const Volume &) = delete;
 
     explicit Volume(std::shared_ptr<Device> containing_device,
-                    int idx, const std::string &label,
+                    int idx, const std::string &label, const std::string &uuid,
                     const std::string &fstype, const std::string &devname,
                     const Automounter::ExternalTools &tools,
                     const std::string& symlink_directory):
@@ -313,6 +324,7 @@ class Volume
         label_(label),
         fstype_(fstype),
         devname_(devname),
+        uuid_(uuid),
         mountpoint_(tools),
         symlink_directory_(symlink_directory)
     {}
@@ -324,6 +336,7 @@ class Volume
     const std::string &get_label() const { return label_; }
     const std::string &get_fstype() const { return fstype_; }
     const std::string &get_device_name() const { return devname_; }
+    const std::string &get_volume_uuid() const { return uuid_; }
 
     void reject() { state_ = REJECTED; }
 

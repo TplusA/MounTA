@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015--2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015--2021  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -56,7 +56,8 @@ static void announce_new_volume(const Devices::Volume &vol)
                                   vol.get_index() >= 0 ? vol.get_index() : UINT_MAX,
                                   vol.get_label().c_str(),
                                   vol.get_mountpoint_name().c_str(),
-                                  vol.get_device()->get_id());
+                                  vol.get_device()->get_id(),
+                                  vol.get_volume_uuid().c_str());
 }
 
 static void announce_new_device(const Devices::Device &dev)
@@ -67,6 +68,7 @@ static void announce_new_device(const Devices::Device &dev)
         tdbus_moun_ta_emit_new_usbdevice(dbus_get_mounta_iface(),
                                          dev.get_id(),
                                          dev.get_display_name().c_str(),
+                                         dev.get_device_uuid().c_str(),
                                          dev.get_working_directory().str().c_str(),
                                          dev.get_usb_port().c_str());
     }

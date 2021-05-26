@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2021  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -24,6 +24,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <algorithm>
+#include <cstring>
 
 #include "devices_os.hh"
 #include "devices_util.h"
@@ -35,7 +36,7 @@ static const Automounter::ExternalTools *devices_os_tools;
 class Tempfile
 {
   private:
-    static constexpr char NAME_TEMPLATE[] = "/tmp/mounta_blkid.XXXXXX";
+    static constexpr char NAME_TEMPLATE[] = "/tmp/mounta_udevadm.XXXXXX";
 
     char name_[sizeof(NAME_TEMPLATE)];
     int fd_;
@@ -135,6 +136,197 @@ static bool parse_usb_device_id(const char *const output, size_t length,
     return true;
 }
 
+static size_t skip_key(const char *const str, size_t length, size_t offset)
+{
+    while(offset < length && str[offset] != '=')
+        ++offset;
+
+    return offset;
+}
+
+static size_t skip_value(const char *const str, size_t length, size_t offset)
+{
+    while(offset < length && str[offset] != '\n')
+        ++offset;
+
+    return offset;
+}
+
+static size_t skip_line(const char *const str, size_t length, size_t offset)
+{
+    offset = skip_value(str, length, offset);
+
+    if(offset < length)
+        ++offset;
+
+    return offset;
+}
+
+static std::string copy_assigned_value(const char *const str, size_t length,
+                                       size_t beginning_of_value)
+{
+    const auto beyond_value = skip_value(str, length, beginning_of_value);
+
+    return beyond_value > beginning_of_value
+        ? std::string(str + beginning_of_value + 1, beyond_value - beginning_of_value - 1)
+        : std::string();
+}
+
+/*!
+ * UUID types, from worst to best.
+ */
+enum class UUIDType
+{
+    NONE,
+    PARTITION_TABLE,
+    PARTITION_ENTRY,
+    FILE_SYSTEM,
+};
+
+enum class ParseUUIDResult
+{
+    BAD_INPUT,
+    SKIPPED_OTHER_KEY,
+    SKIPPED_EMPTY,
+    SKIPPED_WORSE_UUID,
+    SUCCESS,
+};
+
+static ParseUUIDResult
+try_parse_part_table_uuid_or_fs_uuid(const char *const assignment, size_t length,
+                                     std::string &uuid, UUIDType &uuid_type_in_info)
+{
+    const size_t beyond_key = skip_key(assignment, length, 0);
+
+    if(beyond_key >= length)
+        return ParseUUIDResult::BAD_INPUT;
+
+    if(strncmp(assignment, "ID_PART_TABLE_UUID", beyond_key) == 0)
+    {
+        /* partition table */
+        switch(uuid_type_in_info)
+        {
+          case UUIDType::NONE:
+            break;
+
+          case UUIDType::PARTITION_TABLE:
+            BUG("Duplicate partition table UUID");
+            return ParseUUIDResult::SKIPPED_WORSE_UUID;
+
+          case UUIDType::PARTITION_ENTRY:
+          case UUIDType::FILE_SYSTEM:
+            return ParseUUIDResult::SKIPPED_WORSE_UUID;
+        }
+
+        uuid = copy_assigned_value(assignment, length, beyond_key);
+        if(uuid.empty())
+            return ParseUUIDResult::SKIPPED_EMPTY;
+
+        uuid_type_in_info = UUIDType::PARTITION_TABLE;
+        return ParseUUIDResult::SUCCESS;
+    }
+
+    if(strncmp(assignment, "ID_PART_ENTRY_UUID", beyond_key) == 0)
+    {
+        /* partition table entry */
+        switch(uuid_type_in_info)
+        {
+          case UUIDType::NONE:
+          case UUIDType::PARTITION_TABLE:
+            break;
+
+          case UUIDType::PARTITION_ENTRY:
+            BUG("Duplicate partition entry UUID");
+            return ParseUUIDResult::SKIPPED_WORSE_UUID;
+
+          case UUIDType::FILE_SYSTEM:
+            return ParseUUIDResult::SKIPPED_WORSE_UUID;
+        }
+
+        uuid = copy_assigned_value(assignment, length, beyond_key);
+        if(uuid.empty())
+            return ParseUUIDResult::SKIPPED_EMPTY;
+
+        uuid_type_in_info = UUIDType::PARTITION_ENTRY;
+        return ParseUUIDResult::SUCCESS;
+    }
+
+    if(strncmp(assignment, "ID_FS_UUID", beyond_key) == 0)
+    {
+        /* file system */
+        switch(uuid_type_in_info)
+        {
+          case UUIDType::NONE:
+          case UUIDType::PARTITION_TABLE:
+          case UUIDType::PARTITION_ENTRY:
+            break;
+
+          case UUIDType::FILE_SYSTEM:
+            BUG("Duplicate file system UUID");
+            return ParseUUIDResult::SKIPPED_WORSE_UUID;
+        }
+
+        uuid = copy_assigned_value(assignment, length, beyond_key);
+        if(uuid.empty())
+            return ParseUUIDResult::SKIPPED_EMPTY;
+
+        uuid_type_in_info = UUIDType::FILE_SYSTEM;
+        return ParseUUIDResult::SUCCESS;
+    }
+
+    return ParseUUIDResult::SKIPPED_OTHER_KEY;
+}
+
+static bool parse_device_info(const char *const output, size_t length,
+                              const std::string &devlink, Devices::DeviceInfo &devinfo)
+{
+    size_t offset = 0;
+    UUIDType uuid_type = UUIDType::NONE;
+
+    while(offset < length)
+    {
+        const size_t start_of_line = offset;
+        offset = skip_line(output, length, offset);
+        const size_t line_length = offset - start_of_line;
+
+        if(line_length < 4 ||
+           output[start_of_line + 1] != ':' || output[start_of_line + 2] != ' ')
+        {
+            if(line_length >= 2)
+                msg_error(0, LOG_NOTICE,
+                          "Skipping unexpected udevadm output for device %s",
+                          devlink.c_str());
+            continue;
+        }
+
+        if(output[start_of_line] == 'P')
+        {
+            if(!parse_usb_device_id(&output[start_of_line + 3], line_length - 3, devinfo))
+                return false;
+        }
+        else if(output[start_of_line] == 'E')
+            try_parse_part_table_uuid_or_fs_uuid(&output[start_of_line + 3],
+                                                 line_length - 3,
+                                                 devinfo.device_uuid, uuid_type);
+    }
+
+    switch(uuid_type)
+    {
+      case UUIDType::NONE:
+        devinfo.device_uuid = devlink;
+        break;
+
+      case UUIDType::PARTITION_TABLE:
+      case UUIDType::PARTITION_ENTRY:
+      case UUIDType::FILE_SYSTEM:
+        break;
+    }
+
+    return
+        !devinfo.device_uuid.empty() &&
+        devinfo.type != Devices::DeviceType::UNKNOWN;
+}
+
 bool Devices::get_device_information(const std::string &devlink, DeviceInfo &devinfo)
 {
     Tempfile tempfile;
@@ -143,7 +335,7 @@ bool Devices::get_device_information(const std::string &devlink, DeviceInfo &dev
         return false;
 
     if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
-                           "%s info --query path \"%s\" >\"%s\"",
+                           "%s info --query all \"%s\" >\"%s\"",
                            devices_os_tools->udevadm_.executable_.c_str(),
                            devlink.c_str(), tempfile.name()) < 0)
         return false;
@@ -151,8 +343,8 @@ bool Devices::get_device_information(const std::string &devlink, DeviceInfo &dev
     struct os_mapped_file_data output;
     const bool retval =
         (os_map_file_to_memory(&output, tempfile.name()) == 0)
-        ? parse_usb_device_id(static_cast<const char *>(output.ptr),
-                              output.length, devinfo)
+        ? parse_device_info(static_cast<const char *>(output.ptr),
+                            output.length, devlink, devinfo)
         : false;
 
     os_unmap_file(&output);
@@ -160,106 +352,75 @@ bool Devices::get_device_information(const std::string &devlink, DeviceInfo &dev
     return retval;
 }
 
-static size_t skip_whitespace(const char *const str, size_t length,
-                              size_t &offset)
+static bool parse_volume_info(const char *const output, size_t length,
+                              const std::string &devname, Devices::VolumeInfo &volinfo)
 {
-    while(offset < length && isblank(str[offset]))
-        ++offset;
-
-    return offset;
-}
-
-static size_t skip_key(const char *const str, size_t length, size_t &offset)
-{
-    while(offset < length && isupper(str[offset]))
-        ++offset;
-
-    return offset;
-}
-
-static size_t skip_value(const char *const str, size_t length, size_t &offset)
-{
-    while(offset < length && str[offset] != '\n')
-        ++offset;
-
-    return offset;
-}
-
-static size_t skip_line(const char *const str, size_t length, size_t &offset)
-{
-    skip_value(str, length, offset);
-
-    if(offset < length)
-        ++offset;
-
-    return offset;
-}
-
-static bool try_get_value(const std::string &key, std::string &value,
-                          const char *const str,
-                          size_t key_begin, size_t key_beyond,
-                          size_t value_begin, size_t value_beyond)
-{
-    const size_t key_len = key_beyond - key_begin;
-
-    if(key.length() != key_len ||
-       key.compare(0, std::string::npos, str + key_begin, key_len) != 0)
-        return false;
-
-    std::string old_value(std::move(value));
-
-    value = "";  /* we have moved from value: better safe than sorry */
-    value.assign(str + value_begin, value_beyond - value_begin);
-
-    if(!old_value.empty())
-    {
-        msg_error(0, LOG_NOTICE, "Got key \"%s\" multiple times from blkid", key.c_str());
-        msg_error(0, LOG_NOTICE, "Old value: \"%s\"", old_value.c_str());
-        msg_error(0, LOG_NOTICE, "New value: \"%s\"", value.c_str());
-    }
-
-    if(value.empty())
-        msg_out_of_memory("value from blkid output");
-
-    return !value.empty();
-}
-
-static bool parse_blkid_output(const char *const output, size_t length,
-                               Devices::VolumeInfo &info)
-{
-    info.label.clear();
-    info.fstype.clear();
-
     size_t offset = 0;
+    UUIDType uuid_type = UUIDType::NONE;
 
     while(offset < length)
     {
-        const size_t key_begin = skip_whitespace(output, length, offset);
-        const size_t key_beyond = skip_key(output, length, offset);
+        const size_t start_of_line = offset;
+        offset = skip_line(output, length, offset);
+        const size_t line_length = offset - start_of_line;
 
-        skip_whitespace(output, length, offset);
-
-        if(offset >= length || output[offset++] != '=')
+        if(line_length < 4 ||
+           output[start_of_line + 1] != ':' || output[start_of_line + 2] != ' ')
         {
-            skip_line(output, length, offset);
+            if(line_length >= 2)
+                msg_error(0, LOG_NOTICE,
+                          "Skipping unexpected udevadm output for volume %s",
+                          devname.c_str());
             continue;
         }
 
-        const size_t value_begin = skip_whitespace(output, length, offset);
-        const size_t value_beyond = skip_value(output, length, offset);
+        if(output[start_of_line] != 'E')
+            continue;
 
-        if(key_begin < key_beyond && value_begin < value_beyond)
+        const char *assignment = &output[start_of_line + 3];
+        const size_t assignment_length = line_length - 3;
+
+        switch(try_parse_part_table_uuid_or_fs_uuid(assignment, assignment_length,
+                                                    volinfo.volume_uuid, uuid_type))
         {
-            if(!try_get_value("LABEL", info.label, output,
-                              key_begin, key_beyond, value_begin, value_beyond))
-                try_get_value("TYPE", info.fstype, output,
-                              key_begin, key_beyond, value_begin, value_beyond);
+          case ParseUUIDResult::SKIPPED_OTHER_KEY:
+            break;
+
+          case ParseUUIDResult::BAD_INPUT:
+          case ParseUUIDResult::SKIPPED_EMPTY:
+          case ParseUUIDResult::SKIPPED_WORSE_UUID:
+          case ParseUUIDResult::SUCCESS:
+            continue;
         }
 
-        skip_line(output, length, offset);
+        const size_t beyond_key = skip_key(assignment, assignment_length, 0);
+
+        if(strncmp(assignment, "ID_FS_LABEL", beyond_key) == 0)
+            volinfo.label = copy_assigned_value(assignment, assignment_length, beyond_key);
+        else if(strncmp(assignment, "ID_FS_TYPE", beyond_key) == 0)
+            volinfo.fstype = copy_assigned_value(assignment, assignment_length, beyond_key);
     }
 
-    return !info.fstype.empty();
+    switch(uuid_type)
+    {
+      case UUIDType::PARTITION_TABLE:
+        if(volinfo.idx <= 0)
+            break;
+
+        /* fall-through */
+
+      case UUIDType::NONE:
+        volinfo.volume_uuid = devname + '-' + std::to_string(volinfo.idx);
+        break;
+
+      case UUIDType::PARTITION_ENTRY:
+      case UUIDType::FILE_SYSTEM:
+        break;
+    }
+
+    return
+        !volinfo.volume_uuid.empty() &&
+        !volinfo.fstype.empty();
 }
 
 bool Devices::get_volume_information(const std::string &devname, VolumeInfo &info)
@@ -277,9 +438,8 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
         return false;
 
     if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
-                           "%s %s -o export %s >\"%s\"",
-                           devices_os_tools->blkid_.executable_.c_str(),
-                           devices_os_tools->blkid_.options_.c_str(),
+                           "%s info --query all \"%s\" >\"%s\"",
+                           devices_os_tools->udevadm_.executable_.c_str(),
                            devname.c_str(), tempfile.name()) < 0)
         return false;
 
@@ -288,8 +448,8 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
     struct os_mapped_file_data output;
     const bool retval =
         (os_map_file_to_memory(&output, tempfile.name()) == 0)
-        ? parse_blkid_output(static_cast<const char *>(output.ptr),
-                             output.length, info)
+        ? parse_volume_info(static_cast<const char *>(output.ptr),
+                            output.length, devname, info)
         : false;
 
     os_unmap_file(&output);

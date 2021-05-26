@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -313,8 +313,8 @@ Devices::AllDevices::add_or_get_volume(std::shared_ptr<Devices::Device> device,
 
     auto volume = std::unique_ptr<Volume>(
                         new Volume(device, volinfo.idx,
-                                   label, volinfo.fstype, devname, tools_,
-                                   symlink_directory_));
+                                   label, volinfo.volume_uuid, volinfo.fstype,
+                                   devname, tools_, symlink_directory_));
 
     existing_volume = volume.get();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2021  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -38,6 +38,7 @@ enum class DeviceType
 struct DeviceInfo
 {
     DeviceType type;
+    std::string device_uuid;
     std::string usb_port_sysfs_name;
 
     DeviceInfo(const DeviceInfo &) = delete;
@@ -47,8 +48,9 @@ struct DeviceInfo
 
     DeviceInfo(): type(DeviceType::UNKNOWN) {}
 
-    explicit DeviceInfo(std::string &&name):
+    explicit DeviceInfo(std::string &&uuid, std::string &&name):
         type(DeviceType::USB),
+        device_uuid(std::move(uuid)),
         usb_port_sysfs_name(std::move(name))
     {}
 };
@@ -56,6 +58,7 @@ struct DeviceInfo
 struct VolumeInfo
 {
     int idx;
+    std::string volume_uuid;
     std::string label;
     std::string fstype;
 
@@ -66,8 +69,10 @@ struct VolumeInfo
 
     explicit VolumeInfo(): idx(-1) {}
 
-    explicit VolumeInfo(int vol_idx, std::string &&vol_label, std::string &&vol_fstype):
+    explicit VolumeInfo(int vol_idx, std::string &&uuid,
+                        std::string &&vol_label, std::string &&vol_fstype):
         idx(vol_idx),
+        volume_uuid(std::move(uuid)),
         label(std::move(vol_label)),
         fstype(std::move(vol_fstype))
     {}

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -39,8 +39,8 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
 
     GVariantBuilder devices_builder;
     GVariantBuilder volumes_builder;
-    g_variant_builder_init(&devices_builder, G_VARIANT_TYPE("a(qsss)"));
-    g_variant_builder_init(&volumes_builder, G_VARIANT_TYPE("a(ussq)"));
+    g_variant_builder_init(&devices_builder, G_VARIANT_TYPE("a(qssss)"));
+    g_variant_builder_init(&volumes_builder, G_VARIANT_TYPE("a(ussqs)"));
 
     auto am = static_cast<const Automounter::Core *>(user_data);
     log_assert(am != nullptr);
@@ -52,9 +52,10 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
 
         /* note: this duplicates #announce_new_device() */
         g_variant_builder_add(&devices_builder,
-                              "(qsss)",
+                              "(qssss)",
                               device.get_id(),
                               device.get_display_name().c_str(),
+                              device.get_device_uuid().c_str(),
                               device.get_working_directory().str().c_str(),
                               device.get_usb_port().c_str());
 
@@ -67,11 +68,12 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
 
             /* note: this duplicates #announce_new_volume() */
             g_variant_builder_add(&volumes_builder,
-                                  "(ussq)",
+                                  "(ussqs)",
                                   volume.get_index() >= 0 ? volume.get_index() : UINT_MAX,
                                   volume.get_label().c_str(),
                                   volume.get_mountpoint_name().c_str(),
-                                  volume.get_device()->get_id());
+                                  volume.get_device()->get_id(),
+                                  volume.get_volume_uuid().c_str());
         }
     }
 
