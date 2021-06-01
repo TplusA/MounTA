@@ -133,12 +133,16 @@ bool Automounter::Mountpoint::mount(const std::string &device_name,
         return false;
     }
 
-    return os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_NORMAL),
-                               "%s %s %s %s \"%s\"",
-                               tools_.mount_.executable_.c_str(),
-                               tools_.mount_.options_.c_str(),
-                               mount_options.c_str(),
-                               device_name.c_str(), directory_.str().c_str()) == 0;
+    if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_NORMAL),
+                           "%s %s %s %s \"%s\"",
+                           tools_.mount_.executable_.c_str(),
+                           tools_.mount_.options_.c_str(),
+                           mount_options.c_str(),
+                           device_name.c_str(), directory_.str().c_str()) != 0)
+        return false;
+
+    is_mounted_ = true;
+    return true;
 }
 
 void Automounter::Mountpoint::do_cleanup(bool thoroughly)
