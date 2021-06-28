@@ -40,15 +40,6 @@ bool os_rmdir(const char *path, bool must_exist)
     return false;
 }
 
-int os_foreach_in_path(const char *path,
-                       int (*callback)(const char *path, unsigned char dtype,
-                                       void *user_data),
-                       void *user_data)
-{
-    FAIL("Unexpected call");
-    return -1;
-}
-
 int os_stat(const char *path, struct stat *buf)
 {
     FAIL("Unexpected call");
@@ -64,12 +55,6 @@ bool os_mkdir_hierarchy(const char *path, bool must_not_exist)
 void os_nanosleep(const struct timespec *tp)
 {
     FAIL("Unexpected call");
-}
-
-int os_system_formatted(bool is_verbose, const char *format_string, ...)
-{
-    FAIL("Unexpected call");
-    return -1;
 }
 
 const char *Automounter::FSMountOptions::get_options(const std::string &fstype) const
