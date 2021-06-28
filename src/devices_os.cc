@@ -313,7 +313,11 @@ static bool parse_device_info(const char *const output, size_t length,
     switch(uuid_type)
     {
       case UUIDType::NONE:
-        devinfo.device_uuid = devlink;
+        msg_error(0, LOG_WARNING, "Device %s has no UUID", devlink.c_str());
+        devinfo.device_uuid = "DO-NOT-STORE:";
+        std::transform(
+            devlink.begin(), devlink.end(), std::back_inserter(devinfo.device_uuid),
+            [] (const char &ch) { return ch == '/' ? '_' : ch; });
         break;
 
       case UUIDType::PARTITION_TABLE:
@@ -410,7 +414,12 @@ static bool parse_volume_info(const char *const output, size_t length,
         /* fall-through */
 
       case UUIDType::NONE:
-        volinfo.volume_uuid = devname + '-' + std::to_string(volinfo.idx);
+        msg_error(0, LOG_WARNING, "Volume %s has no UUID", devname.c_str());
+        volinfo.volume_uuid = "DO-NOT-STORE:";
+        std::transform(
+            devname.begin(), devname.end(), std::back_inserter(volinfo.volume_uuid),
+            [] (const char &ch) { return ch == '/' ? '_' : ch; });
+        volinfo.volume_uuid += '-' + std::to_string(volinfo.idx);
         break;
 
       case UUIDType::PARTITION_ENTRY:
