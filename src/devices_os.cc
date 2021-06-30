@@ -419,7 +419,6 @@ static bool parse_volume_info(const char *const output, size_t length,
         std::transform(
             devname.begin(), devname.end(), std::back_inserter(volinfo.volume_uuid),
             [] (const char &ch) { return ch == '/' ? '_' : ch; });
-        volinfo.volume_uuid += '-' + std::to_string(volinfo.idx);
         break;
 
       case UUIDType::PARTITION_ENTRY:
