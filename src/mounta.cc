@@ -325,6 +325,7 @@ int main(int argc, char *argv[])
         { "btrfs",   nullptr },
         { "msdos",   mount_options_fat },
         { "vfat",    mount_options_fat },
+        { "exfat",   mount_options_fat },
         { "ntfs",    mount_options_ntfs },
         { "hfs",     mount_options_hfs },
         { "hfsplus", mount_options_hfs },
