@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015--2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015--2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -119,7 +119,7 @@ static void try_mount_volume(Devices::Volume &vol,
         break;
 
       case Devices::Volume::REJECTED:
-        /* devices wasn't rejected, but this volume is */
+        /* device wasn't rejected, but this volume is */
         return;
 
       case Devices::Volume::MOUNTED:

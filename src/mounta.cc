@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019--2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -353,16 +353,16 @@ int main(int argc, char *argv[])
 
     static const char watched_directory[] = "/dev/disk/by-id";
 
-    /* install inotify watch first to make sure are not losing anything */
+    /* install inotify watch first to make sure we are not losing anything */
     static FdEvents ev;
     if(setup_inotify_watch(ev, watched_directory, event_data) < 0)
         return EXIT_FAILURE;
 
     /* after the inotify watch has been installed, we check the directory of
-     * block devices for entries which have already there when we were started;
-     * we are not going to lose any inotify events, but events may occur while
-     * the directory is inspected, possibly leading to events for entries we've
-     * already seen */
+     * block devices for entries which have already been there when we were
+     * started; we are not going to lose any inotify events, but events may
+     * occur while the directory is inspected, possibly leading to events for
+     * entries we've already seen */
     {
         CollectDevicesData data(std::ref(event_data), watched_directory);
 
