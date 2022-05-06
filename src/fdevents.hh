@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2020, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -38,7 +38,9 @@ class FdEvents
         SHUTDOWN,
     };
 
-    using callback_type = std::function<void(EventType ev, const char *path, void *user_data)>;
+    using callback_type =
+        std::function<void(EventType ev, const char *path, bool is_dir,
+                           void *user_data)>;
 
   private:
     int fd_;

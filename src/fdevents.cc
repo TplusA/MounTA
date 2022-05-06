@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -174,21 +174,20 @@ bool FdEvents::process()
     {
         event = reinterpret_cast<const struct inotify_event *>(ptr);
 
-        if(event->mask & IN_ISDIR)
-            continue;
+        const bool is_dir = (event->mask & IN_ISDIR) != 0;
 
         if(event->mask & IN_CREATE)
             event_handler_(NEW_DEVICE,
-                           path_from_event(event), event_handler_user_data_);
+                           path_from_event(event), is_dir, event_handler_user_data_);
 
         if(event->mask & IN_DELETE)
             event_handler_(DEVICE_GONE,
-                           path_from_event(event), event_handler_user_data_);
+                           path_from_event(event), is_dir, event_handler_user_data_);
 
         if(event->mask & (IN_DELETE_SELF | IN_MOVE_SELF))
         {
             event_handler_(SHUTDOWN,
-                           nullptr, event_handler_user_data_);
+                           nullptr, is_dir, event_handler_user_data_);
             close_fd_and_wd(fd_, wd_);
             return false;
         }

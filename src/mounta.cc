@@ -215,8 +215,12 @@ void cleanup_working_directory(const char *working_directory,
     os_foreach_in_path(working_directory, cleanup_mount_root, &data);
 }
 
-static void handle_device_changes(FdEvents::EventType ev, const char *path, void *user_data)
+static void handle_device_changes(FdEvents::EventType ev,
+                                  const char *path, bool is_dir, void *user_data)
 {
+    if(is_dir)
+        return;
+
     auto &data = *static_cast<std::pair<Automounter::Core, GMainLoop *> *>(user_data);
 
     switch(ev)
@@ -269,7 +273,7 @@ static int collect_devices(const char *path, unsigned char dtype,
     full_path += '/';
     full_path += path;
 
-    handle_device_changes(FdEvents::NEW_DEVICE, full_path.c_str(), &data.first);
+    handle_device_changes(FdEvents::NEW_DEVICE, full_path.c_str(), false, &data.first);
 
     return 0;
 }
