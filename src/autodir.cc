@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2017, 2019, 2020, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -59,7 +59,7 @@ bool Automounter::Directory::probe()
         break;
     }
 
-    return is_created_;;
+    return is_created_;
 }
 
 void Automounter::Directory::cleanup()
