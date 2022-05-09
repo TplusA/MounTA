@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2017, 2019, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -53,7 +53,7 @@ class Directory
     ~Directory() { cleanup(); }
 
     bool create();
-    bool probe();
+    bool probe(bool store_state = true);
 
     bool exists() const { return is_created_; }
     const std::string &str() const { return absolute_path_; }
@@ -90,7 +90,7 @@ class Mountpoint
     void cleanup() { do_cleanup(true); }
 
     bool create() { return directory_.create(); }
-    bool probe();
+    bool probe(bool store_state = true);
     bool mount(const std::string &device_name,
                const std::string &mount_options);
 
