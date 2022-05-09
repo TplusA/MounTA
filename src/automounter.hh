@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -75,6 +75,7 @@ class Core
     const std::string working_directory_;
     const FSMountOptions &mount_options_;
     Devices::AllDevices devman_;
+    const ExternalTools &tools_;
 
   public:
     Core(const Core &) = delete;
@@ -86,7 +87,8 @@ class Core
                   const std::string& symlink_directory):
         working_directory_(working_directory),
         mount_options_(mount_options),
-        devman_(tools, symlink_directory)
+        devman_(tools, symlink_directory),
+        tools_(tools)
     {}
 
     void handle_new_device(const char *device_path);

@@ -298,7 +298,7 @@ void Automounter::Core::shutdown()
      * sure to leave the system in the most sane state possible. */
     os_foreach_in_path(working_directory_.c_str(),
                        remove_mountpoint_the_hard_way,
-                       nullptr);
+                       &const_cast<ExternalTools &>(tools_));
 
     /* Top-level working directory should be removed as well. Will be created
      * again when devices are found. */
