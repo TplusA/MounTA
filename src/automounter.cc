@@ -62,7 +62,7 @@ static void announce_new_volume(const Devices::Volume &vol)
 
 static void announce_new_device(const Devices::Device &dev)
 {
-    if(dev.get_working_directory().exists())
+    if(dev.get_working_directory().exists(Automounter::FailIf::NOT_FOUND))
     {
         /* note: this duplicates part of #dbusmethod_get_all() */
         tdbus_moun_ta_emit_new_usbdevice(dbus_get_mounta_iface(),
@@ -146,7 +146,7 @@ static void try_mount_volume(Devices::Volume &vol,
     if(vol.get_state() != Devices::Volume::PENDING)
         return;
 
-    if(!vol.get_device()->get_working_directory().exists())
+    if(!vol.get_device()->get_working_directory().exists(Automounter::FailIf::JUST_WATCHING))
         return;
 
     /*
@@ -255,7 +255,7 @@ void Automounter::Core::handle_removed_device(const char *device_path)
     devman_.remove_entry(device_path,
         [] (const Devices::Device &device)
         {
-            if(device.get_working_directory().exists())
+            if(device.get_working_directory().exists(FailIf::NOT_FOUND))
                 tdbus_moun_ta_emit_device_removed(dbus_get_mounta_iface(),
                                                 device.get_id(),
                                                 device.get_device_uuid().c_str(),
@@ -263,7 +263,7 @@ void Automounter::Core::handle_removed_device(const char *device_path)
         },
         [] (const Devices::Device &device)
         {
-            if(device.get_working_directory().exists())
+            if(device.get_working_directory().exists(FailIf::NOT_FOUND))
                 tdbus_moun_ta_emit_device_will_be_removed(dbus_get_mounta_iface(),
                                                           device.get_id(),
                                                           device.get_device_uuid().c_str(),

@@ -70,8 +70,9 @@ bool Automounter::Directory::probe(bool store_state)
 
 void Automounter::Directory::cleanup()
 {
-    if(!is_created_)
+    if(!is_created_ || is_externally_managed_)
     {
+        is_created_ = false;
         absolute_path_.clear();
         return;
     }
@@ -96,7 +97,7 @@ void Automounter::Directory::cleanup()
 
 void Automounter::Mountpoint::set(std::string &&path)
 {
-    if(directory_.exists())
+    if(directory_.exists(FailIf::NOT_FOUND))
         BUG("Overwriting mountpoint path");
 
     cleanup();
@@ -130,7 +131,7 @@ bool Automounter::Mountpoint::mount(const std::string &device_name,
         return false;
     }
 
-    if(!directory_.exists())
+    if(!directory_.exists(FailIf::NOT_FOUND))
     {
         BUG("Mointpoint \"%s\" does not exist", directory_.str().c_str());
         return false;

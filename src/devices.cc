@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -57,7 +57,7 @@ Devices::Device::~Device()
      * becomes empty */
     volumes_.clear();
 
-    if(mountpoint_container_path_.exists())
+    if(mountpoint_container_path_.exists(Automounter::FailIf::JUST_WATCHING))
         os_foreach_in_path(mountpoint_container_path_.str().c_str(),
                            do_remove_residual_directories,
                            &mountpoint_container_path_);
@@ -97,7 +97,7 @@ bool Devices::Device::mk_working_directory(std::string &&path)
     log_assert(!path.empty());
     log_assert(state_ == OK);
 
-    if(mountpoint_container_path_.exists())
+    if(mountpoint_container_path_.exists(Automounter::FailIf::NOT_FOUND))
         BUG("Overwriting device mountpoint container");
 
     if(path == mountpoint_container_path_.str())
