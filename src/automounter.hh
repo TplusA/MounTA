@@ -93,6 +93,8 @@ class Core
 
     void handle_new_device(const char *device_path);
     void handle_removed_device(const char *device_path);
+    void handle_new_unmanaged_mountpoint(const char *mountpoint_path);
+    void handle_removed_unmanaged_mountpoint(const char *mountpoint_path);
     void shutdown();
 
     class const_iterator

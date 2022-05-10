@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2017, 2019, 2021, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -50,16 +50,19 @@ class ExternalTools
     const Command unmount_;
     const Command mountpoint_;
     const Command udevadm_;
+    const Command findmnt_;
 
     ExternalTools(const ExternalTools &) = delete;
     ExternalTools &operator=(const ExternalTools &) = delete;
 
     explicit ExternalTools(Command &&mount, Command &&unmount,
-                           Command &&mountpoint, Command &&udevadm):
+                           Command &&mountpoint, Command &&udevadm,
+                           Command &&findmnt):
         mount_(std::move(mount)),
         unmount_(std::move(unmount)),
         mountpoint_(std::move(mountpoint)),
-        udevadm_(std::move(udevadm))
+        udevadm_(std::move(udevadm)),
+        findmnt_(std::move(findmnt))
     {}
 };
 

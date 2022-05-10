@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2019, 2020, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -36,4 +36,10 @@ bool Devices::get_device_information(const std::string &devlink, Devices::Device
 bool Devices::get_volume_information(const std::string &devname, Devices::VolumeInfo &info)
 {
     return MockDevicesOs::singleton->check_next<MockDevicesOs::GetVolumeInformation>(devname, std::ref(info));
+}
+
+std::pair<std::string, std::string>
+Devices::map_mountpoint_path_to_device_links(const char *mountpoint_path)
+{
+    return MockDevicesOs::singleton->check_next<MockDevicesOs::MapMountpointPathToDeviceLinks>(mountpoint_path);
 }

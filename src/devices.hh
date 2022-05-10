@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -219,6 +219,7 @@ class Device
 
     const Automounter::Directory &get_working_directory() const { return mountpoint_container_path_; }
     bool mk_working_directory(std::string &&path);
+    void set_mountpoint_directory(std::string &&path);
 
     bool empty() const { return volumes_.empty(); }
     decltype(volumes_)::const_iterator begin() const { return volumes_.begin(); };
@@ -341,6 +342,7 @@ class Volume
     void reject() { state_ = REJECTED; }
 
     bool mk_mountpoint_directory();
+    bool set_unmanaged_mountpoint_directory();
     const std::string &get_mountpoint_name() const { return mountpoint_.str(); }
 
     bool mount(const Automounter::FSMountOptions &mount_options);

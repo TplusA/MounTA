@@ -109,6 +109,18 @@ bool Devices::Device::mk_working_directory(std::string &&path)
     }
 }
 
+void Devices::Device::set_mountpoint_directory(std::string &&path)
+{
+    log_assert(!path.empty());
+    log_assert(state_ == OK);
+
+    if(mountpoint_container_path_.exists(Automounter::FailIf::NOT_FOUND))
+        BUG("Overwriting watched mountpoint path");
+
+    mountpoint_container_path_ = std::move(Automounter::Directory(std::move(path)));
+    mountpoint_container_path_.set_externally_managed();
+}
+
 bool Devices::Device::probe()
 {
     return state_ == SYNTHETIC ? do_probe() : false;
@@ -157,6 +169,15 @@ bool Devices::Volume::mk_mountpoint_directory()
     mountpoint_.set(std::move(os.str()));
 
     return mountpoint_.create();
+}
+
+bool Devices::Volume::set_unmanaged_mountpoint_directory()
+{
+    if(containing_device_ == nullptr)
+        return false;
+
+    mountpoint_.set(std::string(containing_device_->get_working_directory().str()));
+    return true;
 }
 
 bool Devices::Volume::mount(const Automounter::FSMountOptions &mount_options)

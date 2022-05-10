@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019--2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -23,6 +23,7 @@
 #define DEVICES_OS_H
 
 #include <string>
+#include <utility>
 
 namespace Automounter { class ExternalTools; }
 
@@ -111,6 +112,11 @@ bool get_device_information(const std::string &devlink, Devices::DeviceInfo &dev
  *     mounted, false if it doesn't (or on error).
  */
 bool get_volume_information(const std::string &devname, Devices::VolumeInfo &volinfo);
+
+/*!
+ * Get links to block devices for USB device and volume, given a mountpoint.
+ */
+std::pair<std::string, std::string> map_mountpoint_path_to_device_links(const char *path);
 
 }
 

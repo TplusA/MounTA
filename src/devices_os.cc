@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019--2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -463,4 +463,152 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
     os_unmap_file(&output);
 
     return retval;
+}
+
+static bool get_device_and_volume_devnames(const char *path, std::string &dev_device,
+                                           std::string &vol_device)
+{
+    Tempfile tempfile;
+
+    if(!tempfile.created())
+        return false;
+
+    if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
+            "%s %s --output SOURCE \"%s\" >\"%s\"",
+            devices_os_tools->findmnt_.executable_.c_str(),
+            devices_os_tools->findmnt_.options_.c_str(), path,
+            tempfile.name()) < 0)
+        return false;
+
+    struct os_mapped_file_data output;
+    if(os_map_file_to_memory(&output, tempfile.name()) == 0)
+        dev_device.assign(static_cast<const char *>(output.ptr), output.length);
+    os_unmap_file(&output);
+
+    while(!dev_device.empty() && dev_device.back() == '\n')
+        dev_device.pop_back();
+
+    if(dev_device.empty())
+        return false;
+
+    vol_device = dev_device;
+
+    while(!dev_device.empty() && dev_device.back() >= '0' && dev_device.back() <= '9')
+        dev_device.pop_back();
+
+    return !dev_device.empty();
+}
+
+static bool skip_token(const char *line, size_t len, size_t &offset, size_t *end_of_token)
+{
+    while(offset < len && line[offset] != ' ' && line[offset] != '\n')
+        ++offset;
+
+    if(end_of_token != nullptr)
+        *end_of_token = offset;
+
+    if(offset >= len)
+        return true;
+
+    if(line[offset] == '\n')
+    {
+        ++offset;
+        return true;
+    }
+
+    return false;
+}
+
+static std::string parse_device_link_from_line(const char *line, size_t len, size_t &offset)
+{
+    while(offset < len)
+    {
+        while(offset < len && line[offset] == ' ')
+            ++offset;
+
+        static const std::string prefix = "/dev/disk/by-id/";
+        const auto remainder = len - offset;
+        if(remainder < prefix.length())
+            break;
+
+        const auto start_of_token = offset;
+        size_t i;
+        for(i = 0; prefix[i] == line[offset]; ++i, ++offset)
+            ;
+
+        if(i != prefix.length())
+        {
+            /* not found, skip token and return if at EOL or EOF*/
+            if(skip_token(line, len, offset, nullptr))
+                break;
+
+            continue;
+        }
+
+        /* found */
+        size_t end_of_token;
+        if(!skip_token(line, len, offset, &end_of_token))
+        {
+            /* skip until EOL or EOF */
+            do
+            {
+                while(offset < len && line[offset] == ' ')
+                    ++offset;
+            }
+            while(!skip_token(line, len, offset, nullptr));
+        }
+
+        return std::string(line + start_of_token, line + end_of_token);
+    }
+
+    return "";
+}
+
+static bool get_device_links(const std::string &dev_device, const std::string &vol_device,
+                             std::pair<std::string, std::string> &result)
+{
+    Tempfile tempfile;
+
+    if(!tempfile.created())
+        return false;
+
+    if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
+            "%s info --query symlink --export --root \"%s\" \"%s\" >\"%s\"",
+            devices_os_tools->udevadm_.executable_.c_str(),
+            dev_device.c_str(), vol_device.c_str(), tempfile.name()) < 0)
+        return false;
+
+    struct os_mapped_file_data output;
+    if(os_map_file_to_memory(&output, tempfile.name()) == 0)
+    {
+        size_t offset = 0;
+        result.first = parse_device_link_from_line(static_cast<const char *>(output.ptr),
+                                                   output.length, offset);
+        result.second = parse_device_link_from_line(static_cast<const char *>(output.ptr),
+                                                    output.length, offset);
+    }
+    os_unmap_file(&output);
+
+    if(result.first.empty() || result.second.empty())
+    {
+        result.first.clear();
+        result.second.clear();
+    }
+
+    return !result.first.empty();
+}
+
+std::pair<std::string, std::string>
+Devices::map_mountpoint_path_to_device_links(const char *path)
+{
+    log_assert(devices_os_tools != nullptr);
+
+    std::pair<std::string, std::string> result;
+
+    std::string dev_device, vol_device;
+    if(!get_device_and_volume_devnames(path, dev_device, vol_device))
+        return result;
+
+    get_device_links(dev_device, vol_device, result);
+    return result;
 }

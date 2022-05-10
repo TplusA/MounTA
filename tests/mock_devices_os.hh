@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2019, 2020, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -141,6 +141,26 @@ class GetVolumeInformation: public Expectation
         if(volinfo_ != nullptr)
             info = *volinfo_;
 
+        return retval_;
+    }
+};
+
+class MapMountpointPathToDeviceLinks: public Expectation
+{
+  private:
+    const std::pair<std::string, std::string> retval_;
+    const std::string mountpoint_path_;
+
+  public:
+    explicit MapMountpointPathToDeviceLinks(std::string &&mountpoint_path,
+                                            std::pair<std::string, std::string> &&retval):
+        retval_(std::move(retval)),
+        mountpoint_path_(std::move(mountpoint_path))
+    {}
+
+    std::pair<std::string, std::string> check(const char *mountpoint_path) const
+    {
+        CHECK(mountpoint_path == mountpoint_path_);
         return retval_;
     }
 };
