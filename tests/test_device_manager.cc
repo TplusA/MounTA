@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019--2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -93,7 +93,8 @@ static Automounter::ExternalTools tools(
             Automounter::ExternalTools::Command("/bin/mount",          nullptr),
             Automounter::ExternalTools::Command("/bin/umount",         nullptr),
             Automounter::ExternalTools::Command("/usr/bin/mountpoint", "-q"),
-            Automounter::ExternalTools::Command("/bin/udevadm",        nullptr)
+            Automounter::ExternalTools::Command("/bin/udevadm",        nullptr),
+            Automounter::ExternalTools::Command("/bin/findmnt",        "-n")
 );
 
 class Fixture

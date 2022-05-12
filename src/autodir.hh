@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2017, 2019, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -30,11 +30,18 @@ namespace Automounter
 
 class ExternalTools;
 
+enum class FailIf
+{
+    NOT_FOUND,
+    JUST_WATCHING,
+};
+
 class Directory
 {
   private:
     std::string absolute_path_;
     bool is_created_;
+    bool is_externally_managed_;
 
   public:
     Directory(const Directory &) = delete;
@@ -42,20 +49,43 @@ class Directory
     Directory &operator=(Directory &&) = default;
 
     explicit Directory():
-        is_created_(false)
+        is_created_(false),
+        is_externally_managed_(false)
     {}
 
     explicit Directory(std::string &&path):
         absolute_path_(std::move(path)),
-        is_created_(false)
+        is_created_(false),
+        is_externally_managed_(false)
     {}
 
     ~Directory() { cleanup(); }
 
     bool create();
-    bool probe();
+    bool probe(bool store_state = true);
 
-    bool exists() const { return is_created_; }
+    void set_externally_managed()
+    {
+        is_created_ = true;
+        is_externally_managed_ = true;
+    }
+
+    bool exists(FailIf fail_if) const
+    {
+        switch(fail_if)
+        {
+          case FailIf::JUST_WATCHING:
+            if(is_externally_managed_)
+                return false;
+            break;
+
+          case FailIf::NOT_FOUND:
+            break;
+        }
+
+        return is_created_;
+    }
+
     const std::string &str() const { return absolute_path_; }
 
     void cleanup();
@@ -90,11 +120,11 @@ class Mountpoint
     void cleanup() { do_cleanup(true); }
 
     bool create() { return directory_.create(); }
-    bool probe();
+    bool probe(bool store_state = true);
     bool mount(const std::string &device_name,
                const std::string &mount_options);
 
-    bool exists() const { return directory_.exists(); }
+    bool exists(FailIf fail_if) const { return directory_.exists(fail_if); }
     bool is_mounted() const { return is_mounted_; }
     const std::string &str() const { return directory_.str(); }
 

@@ -62,7 +62,7 @@ static void announce_new_volume(const Devices::Volume &vol)
 
 static void announce_new_device(const Devices::Device &dev)
 {
-    if(dev.get_working_directory().exists())
+    if(dev.get_working_directory().exists(Automounter::FailIf::NOT_FOUND))
     {
         /* note: this duplicates part of #dbusmethod_get_all() */
         tdbus_moun_ta_emit_new_usbdevice(dbus_get_mounta_iface(),
@@ -146,13 +146,26 @@ static void try_mount_volume(Devices::Volume &vol,
     if(vol.get_state() != Devices::Volume::PENDING)
         return;
 
-    if(!vol.get_device()->get_working_directory().exists())
+    if(!vol.get_device()->get_working_directory().exists(Automounter::FailIf::NOT_FOUND))
         return;
 
     /*
      * None of the filters kicked in, so we'll try to mount the volume now.
      */
-    if(vol.mk_mountpoint_directory() && vol.mount(mount_options))
+    if(!vol.get_device()->get_working_directory().exists(Automounter::FailIf::JUST_WATCHING))
+    {
+        /* watch mode */
+        vol.set_unmanaged_mountpoint_directory();
+        vol.set_mounted();
+
+        msg_info("Added mounted volume %s to %s (USB port %s)",
+                 vol.get_device_name().c_str(),
+                 vol.get_mountpoint_name().c_str(),
+                 vol.get_device()->get_usb_port().c_str());
+
+        announce_new_volume(vol);
+    }
+    else if(vol.mk_mountpoint_directory() && vol.mount(mount_options))
     {
         vol.set_mounted();
 
@@ -255,7 +268,7 @@ void Automounter::Core::handle_removed_device(const char *device_path)
     devman_.remove_entry(device_path,
         [] (const Devices::Device &device)
         {
-            if(device.get_working_directory().exists())
+            if(device.get_working_directory().exists(FailIf::NOT_FOUND))
                 tdbus_moun_ta_emit_device_removed(dbus_get_mounta_iface(),
                                                 device.get_id(),
                                                 device.get_device_uuid().c_str(),
@@ -263,12 +276,65 @@ void Automounter::Core::handle_removed_device(const char *device_path)
         },
         [] (const Devices::Device &device)
         {
-            if(device.get_working_directory().exists())
+            if(device.get_working_directory().exists(FailIf::NOT_FOUND))
                 tdbus_moun_ta_emit_device_will_be_removed(dbus_get_mounta_iface(),
                                                           device.get_id(),
                                                           device.get_device_uuid().c_str(),
                                                           device.get_working_directory().str().c_str());
         });
+}
+
+void Automounter::Core::handle_new_unmanaged_mountpoint(const char *mountpoint_path)
+{
+    log_assert(mountpoint_path != nullptr);
+
+    msg_info("New mountpoint: \"%s\"", mountpoint_path);
+    static const struct timespec small_delay = {0, 500L * 1000L * 1000L};
+    nanosleep(&small_delay, nullptr);
+
+    Devices::Volume *vol;
+    auto dev = devman_.new_entry_by_mountpoint(mountpoint_path, vol);
+
+    if(dev == nullptr || dev->empty() || vol == nullptr)
+    {
+        msg_error(0, LOG_NOTICE, "Failed probing mountpoint %s", mountpoint_path);
+        return;
+    }
+
+    switch(dev->get_state())
+    {
+      case Devices::Device::SYNTHETIC:
+      case Devices::Device::BROKEN:
+      case Devices::Device::REJECTED:
+        return;
+
+      case Devices::Device::PROBED:
+        apply_device_filter(*dev);
+
+        if(dev->get_state() != Devices::Device::OK)
+            return;
+
+        /* fall-through */
+
+      case Devices::Device::OK:
+        dev->set_mountpoint_directory(mountpoint_path);
+        announce_new_device(*dev);
+        try_mount_volume(*vol, mount_options_);
+        break;
+    }
+}
+
+void Automounter::Core::handle_removed_unmanaged_mountpoint(const char *mountpoint_path)
+{
+    log_assert(mountpoint_path != nullptr);
+
+    msg_info("Removed mountpoint: \"%s\"", mountpoint_path);
+
+    /* cannot call Devices::map_mountpoint_path_to_device_links() here because
+     * the mountpoint and the device are gone already */
+    const auto dev(devman_.take_volume_device_for_mountpoint(mountpoint_path));
+    if(!dev.empty())
+        handle_removed_device(dev.c_str());
 }
 
 static int remove_mountpoint_the_hard_way(const char *path,

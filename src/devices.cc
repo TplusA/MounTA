@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -57,7 +57,7 @@ Devices::Device::~Device()
      * becomes empty */
     volumes_.clear();
 
-    if(mountpoint_container_path_.exists())
+    if(mountpoint_container_path_.exists(Automounter::FailIf::JUST_WATCHING))
         os_foreach_in_path(mountpoint_container_path_.str().c_str(),
                            do_remove_residual_directories,
                            &mountpoint_container_path_);
@@ -97,7 +97,7 @@ bool Devices::Device::mk_working_directory(std::string &&path)
     log_assert(!path.empty());
     log_assert(state_ == OK);
 
-    if(mountpoint_container_path_.exists())
+    if(mountpoint_container_path_.exists(Automounter::FailIf::NOT_FOUND))
         BUG("Overwriting device mountpoint container");
 
     if(path == mountpoint_container_path_.str())
@@ -107,6 +107,18 @@ bool Devices::Device::mk_working_directory(std::string &&path)
         mountpoint_container_path_ = std::move(Automounter::Directory(std::move(path)));
         return mountpoint_container_path_.create();
     }
+}
+
+void Devices::Device::set_mountpoint_directory(std::string &&path)
+{
+    log_assert(!path.empty());
+    log_assert(state_ == OK);
+
+    if(mountpoint_container_path_.exists(Automounter::FailIf::NOT_FOUND))
+        BUG("Overwriting watched mountpoint path");
+
+    mountpoint_container_path_ = std::move(Automounter::Directory(std::move(path)));
+    mountpoint_container_path_.set_externally_managed();
 }
 
 bool Devices::Device::probe()
@@ -157,6 +169,15 @@ bool Devices::Volume::mk_mountpoint_directory()
     mountpoint_.set(std::move(os.str()));
 
     return mountpoint_.create();
+}
+
+bool Devices::Volume::set_unmanaged_mountpoint_directory()
+{
+    if(containing_device_ == nullptr)
+        return false;
+
+    mountpoint_.set(std::string(containing_device_->get_working_directory().str()));
+    return true;
 }
 
 bool Devices::Volume::mount(const Automounter::FSMountOptions &mount_options)

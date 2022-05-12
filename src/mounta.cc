@@ -47,11 +47,13 @@ struct Parameters
     bool run_in_foreground;
     bool connect_to_session_dbus;
     const char *working_directory;
+    bool working_directory_is_watched;
     const char *symlink_directory;
     const char *mount_tool;
     const char *unmount_tool;
     const char *mpoint_tool;
     const char *udevadm_tool;
+    const char *findmnt_tool;
 };
 
 static void show_version_info(void)
@@ -113,6 +115,7 @@ static void usage(const char *program_name)
         "  --version      Print version information to stdout.\n"
         "  --fg           Run in foreground, don't run as daemon.\n"
         "  --workdir PATH Where the mountpoints are to be maintained.\n"
+        "  --watch PATH   For environments with other means of mounting.\n"
         "  --session-dbus Connect to session D-Bus.\n"
         "  --system-dbus  Connect to system D-Bus."
         << std::endl;
@@ -124,9 +127,11 @@ static int process_command_line(int argc, char *argv[], Parameters &parameters)
     parameters.connect_to_session_dbus = true;
     parameters.mount_tool = "/usr/bin/sudo /bin/mount";
     parameters.unmount_tool = "/usr/bin/sudo /bin/umount";
-    parameters.mpoint_tool = "/usr/bin/mountpoint";
+    parameters.mpoint_tool = "/bin/mountpoint";
     parameters.udevadm_tool = "/bin/udevadm";
+    parameters.findmnt_tool = "/bin/findmnt";
     parameters.working_directory = "/run/MounTA";
+    parameters.working_directory_is_watched = false;
     parameters.symlink_directory = "/run/mount-by-label";
 
 #define CHECK_ARGUMENT() \
@@ -141,6 +146,21 @@ static int process_command_line(int argc, char *argv[], Parameters &parameters)
     } \
     while(0)
 
+#define CHECK_WD_PARAM() \
+    do \
+    { \
+        if(wd_was_set) \
+        { \
+            fprintf(stderr, "Options --workdir and --watch can be set only " \
+                    "once, and they are mutually exclusive.\n"); \
+            return -1; \
+        } \
+        wd_was_set = true; \
+    } \
+    while(0)
+
+    bool wd_was_set = false;
+
     for(int i = 1; i < argc; ++i)
     {
         if(strcmp(argv[i], "--help") == 0)
@@ -152,7 +172,16 @@ static int process_command_line(int argc, char *argv[], Parameters &parameters)
         else if(strcmp(argv[i], "--workdir") == 0)
         {
             CHECK_ARGUMENT();
+            CHECK_WD_PARAM();
             parameters.working_directory = argv[i];
+            parameters.working_directory_is_watched = false;
+        }
+        else if(strcmp(argv[i], "--watch") == 0)
+        {
+            CHECK_ARGUMENT();
+            CHECK_WD_PARAM();
+            parameters.working_directory = argv[i];
+            parameters.working_directory_is_watched = true;
         }
         else if(strcmp(argv[i], "--session-dbus") == 0)
             parameters.connect_to_session_dbus = true;
@@ -215,8 +244,12 @@ void cleanup_working_directory(const char *working_directory,
     os_foreach_in_path(working_directory, cleanup_mount_root, &data);
 }
 
-static void handle_device_changes(FdEvents::EventType ev, const char *path, void *user_data)
+static void handle_device_changes(FdEvents::EventType ev,
+                                  const char *path, bool is_dir, void *user_data)
 {
+    if(is_dir)
+        return;
+
     auto &data = *static_cast<std::pair<Automounter::Core, GMainLoop *> *>(user_data);
 
     switch(ev)
@@ -236,6 +269,31 @@ static void handle_device_changes(FdEvents::EventType ev, const char *path, void
     }
 }
 
+static void handle_mountpoint_changes(FdEvents::EventType ev,
+                                      const char *path, bool is_dir, void *user_data)
+{
+    if(!is_dir)
+        return;
+
+    auto &data = *static_cast<std::pair<Automounter::Core, GMainLoop *> *>(user_data);
+
+    switch(ev)
+    {
+      case FdEvents::NEW_DEVICE:
+        data.first.handle_new_unmanaged_mountpoint(path);
+        break;
+
+      case FdEvents::DEVICE_GONE:
+        data.first.handle_removed_unmanaged_mountpoint(path);
+        break;
+
+      case FdEvents::SHUTDOWN:
+        data.first.shutdown();
+        g_main_loop_quit(data.second);
+        break;
+    }
+}
+
 static gboolean handle_fd_event(gint fd, GIOCondition condition, gpointer user_data)
 {
     return (static_cast<FdEvents *>(user_data)->process()
@@ -244,9 +302,10 @@ static gboolean handle_fd_event(gint fd, GIOCondition condition, gpointer user_d
 }
 
 static int setup_inotify_watch(FdEvents &ev, const char *path,
+                               const FdEvents::callback_type &handler,
                                std::pair<Automounter::Core, GMainLoop *> &data)
 {
-    int fd = ev.watch(path, handle_device_changes, &data);
+    int fd = ev.watch(path, handler, &data);
 
     if(fd < 0)
         return -1;
@@ -269,8 +328,21 @@ static int collect_devices(const char *path, unsigned char dtype,
     full_path += '/';
     full_path += path;
 
-    handle_device_changes(FdEvents::NEW_DEVICE, full_path.c_str(), &data.first);
+    handle_device_changes(FdEvents::NEW_DEVICE, full_path.c_str(), false, &data.first);
 
+    return 0;
+}
+
+static int collect_mountpoints(const char *path, unsigned char dtype,
+                               void *user_data)
+{
+    auto &data = *static_cast<CollectDevicesData *>(user_data);
+
+    std::string full_path(data.second);
+    full_path += '/';
+    full_path += path;
+
+    handle_mountpoint_changes(FdEvents::NEW_DEVICE, full_path.c_str(), true, &data.first);
     return 0;
 }
 
@@ -336,11 +408,13 @@ int main(int argc, char *argv[])
         Automounter::ExternalTools::Command(parameters.mount_tool,   mount_options_default),
         Automounter::ExternalTools::Command(parameters.unmount_tool, nullptr),
         Automounter::ExternalTools::Command(parameters.mpoint_tool,  "-q"),
-        Automounter::ExternalTools::Command(parameters.udevadm_tool, nullptr)
+        Automounter::ExternalTools::Command(parameters.udevadm_tool, nullptr),
+        Automounter::ExternalTools::Command(parameters.findmnt_tool, "-n")
     );
 
     Devices::init(tools);
-    cleanup_working_directory(parameters.working_directory, tools);
+    if(!parameters.working_directory_is_watched)
+        cleanup_working_directory(parameters.working_directory, tools);
 
     auto event_data =
         std::make_pair(Automounter::Core(parameters.working_directory, tools,
@@ -351,19 +425,36 @@ int main(int argc, char *argv[])
     if(dbus_setup(loop, parameters.connect_to_session_dbus, &event_data.first) < 0)
         return EXIT_FAILURE;
 
-    static const char watched_directory[] = "/dev/disk/by-id";
-
     /* install inotify watch first to make sure we are not losing anything */
     static FdEvents ev;
-    if(setup_inotify_watch(ev, watched_directory, event_data) < 0)
-        return EXIT_FAILURE;
 
-    /* after the inotify watch has been installed, we check the directory of
-     * block devices for entries which have already been there when we were
-     * started; we are not going to lose any inotify events, but events may
-     * occur while the directory is inspected, possibly leading to events for
-     * entries we've already seen */
+    if(parameters.working_directory_is_watched)
     {
+        msg_info("Just watching %s", parameters.working_directory);
+
+        if(setup_inotify_watch(ev, parameters.working_directory,
+                               handle_mountpoint_changes, event_data) < 0)
+            return EXIT_FAILURE;
+
+        CollectDevicesData data(std::ref(event_data), parameters.working_directory);
+
+        if(os_foreach_in_path(parameters.working_directory,
+                              collect_mountpoints, &data) < 0)
+            return EXIT_FAILURE;
+    }
+    else
+    {
+        static const char watched_directory[] = "/dev/disk/by-id";
+
+        if(setup_inotify_watch(ev, watched_directory,
+                               handle_device_changes, event_data) < 0)
+            return EXIT_FAILURE;
+
+        /* after the inotify watch has been installed, we check the directory
+         * of block devices for entries which have already been there when we
+         * were started; we are not going to lose any inotify events, but
+         * events may occur while the directory is inspected, possibly leading
+         * to events for entries we've already seen */
         CollectDevicesData data(std::ref(event_data), watched_directory);
 
         if(os_foreach_in_path(watched_directory, collect_devices, &data) < 0)

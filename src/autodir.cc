@@ -42,10 +42,12 @@ bool Automounter::Directory::create()
     return is_created_;
 }
 
-bool Automounter::Directory::probe()
+bool Automounter::Directory::probe(bool store_state)
 {
     if(absolute_path_.empty())
         return false;
+
+    bool is_created = is_created_;
 
     switch(os_path_get_type(absolute_path_.c_str()))
     {
@@ -55,17 +57,22 @@ bool Automounter::Directory::probe()
         break;
 
       case OS_PATH_TYPE_DIRECTORY:
-        is_created_ = true;
+        is_created = true;
+
+        if(store_state)
+            is_created_ = is_created;
+
         break;
     }
 
-    return is_created_;
+    return is_created;
 }
 
 void Automounter::Directory::cleanup()
 {
-    if(!is_created_)
+    if(!is_created_ || is_externally_managed_)
     {
+        is_created_ = false;
         absolute_path_.clear();
         return;
     }
@@ -90,26 +97,29 @@ void Automounter::Directory::cleanup()
 
 void Automounter::Mountpoint::set(std::string &&path)
 {
-    if(directory_.exists())
+    if(directory_.exists(FailIf::NOT_FOUND))
         BUG("Overwriting mountpoint path");
 
     cleanup();
     directory_ = std::move(Directory(std::move(path)));
 }
 
-bool Automounter::Mountpoint::probe()
+bool Automounter::Mountpoint::probe(bool store_state)
 {
-    if(!directory_.probe())
+    if(!directory_.probe(store_state))
         return false;
 
-    is_mounted_ =
+    const bool is_mounted =
         os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
                             "%s %s \"%s\"",
                             tools_.mountpoint_.executable_.c_str(),
                             tools_.mountpoint_.options_.c_str(),
                             directory_.str().c_str()) == 0;
 
-    return is_mounted_;
+    if(store_state)
+        is_mounted_ = is_mounted;
+
+    return is_mounted;
 }
 
 bool Automounter::Mountpoint::mount(const std::string &device_name,
@@ -121,7 +131,7 @@ bool Automounter::Mountpoint::mount(const std::string &device_name,
         return false;
     }
 
-    if(!directory_.exists())
+    if(!directory_.exists(FailIf::NOT_FOUND))
     {
         BUG("Mointpoint \"%s\" does not exist", directory_.str().c_str());
         return false;

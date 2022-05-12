@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -173,6 +173,57 @@ Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
     }
 
     return device;
+}
+
+std::shared_ptr<Devices::Device>
+Devices::AllDevices::new_entry_by_mountpoint(const char *mountpoint_path,
+                                             Devices::Volume *&volume)
+{
+    {
+        Automounter::Mountpoint mp(tools_, mountpoint_path);
+        if(!mp.probe(false))
+        {
+            msg_error(EINVAL, LOG_ERR, "Not a mountpoint: %s", mountpoint_path);
+            return nullptr;
+        }
+    }
+
+    const auto devlinks(map_mountpoint_path_to_device_links(mountpoint_path));
+
+    if(devlinks.first.empty() || devlinks.second.empty())
+    {
+        msg_error(EINVAL, LOG_ERR,
+                  "Failed mapping mountpoint %s to device links", mountpoint_path);
+        return nullptr;
+    }
+
+    bool dummy;
+    if(new_entry(devlinks.first.c_str(), volume, dummy) == nullptr)
+        return nullptr;
+
+    auto result = new_entry(devlinks.second.c_str(), volume, dummy);
+
+    if(result != nullptr)
+        volume_device_for_mountpoint_[mountpoint_path] = devlinks.first;
+
+    return result;
+}
+
+std::string Devices::AllDevices::take_volume_device_for_mountpoint(const char *mountpoint_path)
+{
+    log_assert(mountpoint_path != nullptr);
+
+    std::string result;
+    auto it(volume_device_for_mountpoint_.find(mountpoint_path));
+
+    if(it != volume_device_for_mountpoint_.end())
+    {
+        result = std::move(it->second);
+        volume_device_for_mountpoint_.erase(it);
+    }
+
+    BUG_IF(result.empty(), "Failed to map mountpoint to device name");
+    return result;
 }
 
 bool Devices::AllDevices::remove_entry(const char *devlink,

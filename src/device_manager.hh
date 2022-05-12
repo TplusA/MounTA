@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2020, 2022  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -24,6 +24,7 @@
 
 #include <stdexcept>
 #include <functional>
+#include <unordered_map>
 
 #include "devices.hh"
 #include "devices_os.hh"
@@ -52,6 +53,7 @@ class AllDevices
     DevContainerType devices_;
     const Automounter::ExternalTools &tools_;
     const std::string symlink_directory_;
+    std::unordered_map<std::string, std::string> volume_device_for_mountpoint_;
 
   public:
     AllDevices(const AllDevices &) = delete;
@@ -75,6 +77,10 @@ class AllDevices
         return new_entry(devlink, const_cast<Devices::Volume *&>(volume),
                          have_probed_containing_device);
     }
+
+    std::shared_ptr<Device> new_entry_by_mountpoint(const char *mountpoint_path,
+                                                    Volume *&volume);
+    std::string take_volume_device_for_mountpoint(const char *mountpoint_path);
 
     bool remove_entry(const char *devlink,
                       const std::function<void(const Device &)> &after_removal_notification = nullptr,
