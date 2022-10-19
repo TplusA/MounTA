@@ -25,6 +25,7 @@
 
 #include <sstream>
 #include <cstring>
+#include <climits>
 
 #include "automounter.hh"
 #include "external_tools.hh"
