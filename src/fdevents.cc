@@ -89,8 +89,9 @@ int FdEvents::watch(const char *path,
     }
 
     wd_ = inotify_add_watch(fd_, path,
-                            IN_CREATE | IN_DELETE | IN_DELETE_SELF |
-                            IN_MOVE_SELF | IN_DONT_FOLLOW | IN_ONLYDIR);
+                            IN_CREATE | IN_DELETE | IN_MOVED_TO |
+                            IN_DELETE_SELF | IN_MOVE_SELF |
+                            IN_DONT_FOLLOW | IN_ONLYDIR);
 
     if(wd_ < 0)
     {
@@ -176,7 +177,7 @@ bool FdEvents::process()
 
         const bool is_dir = (event->mask & IN_ISDIR) != 0;
 
-        if(event->mask & IN_CREATE)
+        if(event->mask & (IN_CREATE | IN_MOVED_TO))
             event_handler_(NEW_DEVICE,
                            path_from_event(event), is_dir, event_handler_user_data_);
 

@@ -26,6 +26,7 @@
 #include <sstream>
 #include <cstring>
 #include <climits>
+#include <algorithm>
 
 #include "automounter.hh"
 #include "external_tools.hh"
@@ -76,27 +77,71 @@ static void announce_new_device(const Devices::Device &dev)
 }
 
 /*!
- * Filter devices here.
- *
- * \todo Replace ad-hoc filter by proper configurable filter object.
+ * Check whether or not a device symlink name is of interest to us.
  */
-static void apply_device_filter(Devices::Device &dev)
+static bool is_device_name_acceptable(const char *device_name,
+                                      bool check_for_tempfiles)
 {
-    log_assert(dev.get_state() == Devices::Device::PROBED);
-
-    static constexpr const std::array<const char *const, 2> allowed_prefixes
+    /* allow only certain prefixes */
+    static const std::array<const std::string, 2> allowed_prefixes
     {
         "usb-",
         "ata-",
     };
 
-    for(const auto prefix : allowed_prefixes)
+    if(check_for_tempfiles)
     {
-        if(strncmp(dev.get_display_name().c_str(), prefix, strlen(prefix)) == 0)
-            return dev.accept();
+        const char *temp = strrchr(device_name, '/');
+        if(temp != nullptr)
+            device_name = temp + 1;
     }
 
-    dev.reject();
+    if(std::none_of(allowed_prefixes.begin(), allowed_prefixes.end(),
+            [&device_name] (const auto &prefix)
+            {
+                return strncmp(device_name, prefix.c_str(), prefix.length()) == 0;
+            }))
+        return false;
+
+    /* filter out systemd temporary symlink names for block devices (for
+     * example, "usb-NAME-0:0-part1.tmp-b8:17" is a temporary file for the
+     * final name "usb-NAME-0:0-part1", so we need to detect the
+     * ".tmp-bnnn:mmm" suffix) */
+    if(!check_for_tempfiles)
+        return true;
+
+    const char *s = strrchr(device_name, '.');
+    if(s == nullptr)
+        return true;
+
+    static const char block_dev_tmpname[] = "tmp-b";
+    if(strncmp(s + 1, block_dev_tmpname, sizeof(block_dev_tmpname) - 1) != 0)
+        return true;
+
+    for(s += sizeof(block_dev_tmpname); *s >= '0' && *s <= '9'; ++s)
+        ;
+
+    if(*s != ':')
+        return true;
+
+    const char *after_colon = s + 1;
+    for(s = after_colon; *s >= '0' && *s <= '9'; ++s)
+        ;
+
+    return s == after_colon || *s != '\0';
+}
+
+/*!
+ * Filter devices here.
+ */
+static void apply_device_filter(Devices::Device &dev)
+{
+    log_assert(dev.get_state() == Devices::Device::PROBED);
+
+    if(is_device_name_acceptable(dev.get_display_name().c_str(), false))
+        dev.accept();
+    else
+        dev.reject();
 }
 
 /*!
@@ -202,6 +247,13 @@ static void mount_all_pending_volumes(Devices::Device &dev,
 void Automounter::Core::handle_new_device(const char *device_path)
 {
     log_assert(device_path != nullptr);
+
+    if(!is_device_name_acceptable(device_path, true))
+    {
+        msg_vinfo(MESSAGE_LEVEL_DIAG,
+                  "Rejected device (bad name): \"%s\"", device_path);
+        return;
+    }
 
     msg_info("New device: \"%s\"", device_path);
 
