@@ -1,3 +1,10 @@
+2022-10-20  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 1.5 released.
+
+	* Devices: Improve compatibility with systemd-udev and its use of
+	  temporary symlinks below /dev/disk/by-id/.
+
 2022-05-12  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 1.4 released.
