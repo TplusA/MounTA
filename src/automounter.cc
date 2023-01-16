@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015--2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015--2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -27,6 +27,7 @@
 #include <cstring>
 #include <climits>
 #include <algorithm>
+#include <array>
 
 #include "automounter.hh"
 #include "external_tools.hh"
@@ -136,7 +137,7 @@ static bool is_device_name_acceptable(const char *device_name,
  */
 static void apply_device_filter(Devices::Device &dev)
 {
-    log_assert(dev.get_state() == Devices::Device::PROBED);
+    msg_log_assert(dev.get_state() == Devices::Device::PROBED);
 
     if(is_device_name_acceptable(dev.get_display_name().c_str(), false))
         dev.accept();
@@ -152,7 +153,7 @@ static void apply_device_filter(Devices::Device &dev)
  */
 static void apply_volume_filter(Devices::Volume &vol)
 {
-    log_assert(vol.get_state() == Devices::Volume::PENDING);
+    msg_log_assert(vol.get_state() == Devices::Volume::PENDING);
 }
 
 static void try_mount_volume(Devices::Volume &vol,
@@ -169,15 +170,15 @@ static void try_mount_volume(Devices::Volume &vol,
         return;
 
       case Devices::Volume::MOUNTED:
-        BUG("Attempted to remount device");
+        MSG_BUG("Attempted to remount device");
         return;
 
       case Devices::Volume::UNUSABLE:
-        BUG("Attempted to remount known unusable device");
+        MSG_BUG("Attempted to remount known unusable device");
         return;
 
       case Devices::Volume::REMOVED:
-        BUG("Attempted to remount removed device");
+        MSG_BUG("Attempted to remount removed device");
         return;
     }
 
@@ -246,7 +247,7 @@ static void mount_all_pending_volumes(Devices::Device &dev,
 
 void Automounter::Core::handle_new_device(const char *device_path)
 {
-    log_assert(device_path != nullptr);
+    msg_log_assert(device_path != nullptr);
 
     if(!is_device_name_acceptable(device_path, true))
     {
@@ -270,7 +271,7 @@ void Automounter::Core::handle_new_device(const char *device_path)
             return;
     }
 
-    log_assert(dev != nullptr);
+    msg_log_assert(dev != nullptr);
 
     switch(dev->get_state())
     {
@@ -314,7 +315,7 @@ void Automounter::Core::handle_new_device(const char *device_path)
 
 void Automounter::Core::handle_removed_device(const char *device_path)
 {
-    log_assert(device_path != nullptr);
+    msg_log_assert(device_path != nullptr);
 
     msg_info("Removed device: \"%s\"", device_path);
 
@@ -339,7 +340,7 @@ void Automounter::Core::handle_removed_device(const char *device_path)
 
 void Automounter::Core::handle_new_unmanaged_mountpoint(const char *mountpoint_path)
 {
-    log_assert(mountpoint_path != nullptr);
+    msg_log_assert(mountpoint_path != nullptr);
 
     msg_info("New mountpoint: \"%s\"", mountpoint_path);
     static const struct timespec small_delay = {0, 500L * 1000L * 1000L};
@@ -379,7 +380,7 @@ void Automounter::Core::handle_new_unmanaged_mountpoint(const char *mountpoint_p
 
 void Automounter::Core::handle_removed_unmanaged_mountpoint(const char *mountpoint_path)
 {
-    log_assert(mountpoint_path != nullptr);
+    msg_log_assert(mountpoint_path != nullptr);
 
     msg_info("Removed mountpoint: \"%s\"", mountpoint_path);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2019, 2020  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2019, 2020, 2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -129,7 +129,7 @@ int dbus_setup(GMainLoop *loop, bool connect_to_session_bus,
         return -1;
     }
 
-    log_assert(dbus_data.mounta_iface != NULL);
+    msg_log_assert(dbus_data.mounta_iface != NULL);
 
     g_main_loop_ref(loop);
 

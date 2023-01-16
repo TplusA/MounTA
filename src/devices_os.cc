@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019--2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -210,7 +210,7 @@ try_parse_part_table_uuid_or_fs_uuid(const char *const assignment, size_t length
             break;
 
           case UUIDType::PARTITION_TABLE:
-            BUG("Duplicate partition table UUID");
+            MSG_BUG("Duplicate partition table UUID");
             return ParseUUIDResult::SKIPPED_WORSE_UUID;
 
           case UUIDType::PARTITION_ENTRY:
@@ -236,7 +236,7 @@ try_parse_part_table_uuid_or_fs_uuid(const char *const assignment, size_t length
             break;
 
           case UUIDType::PARTITION_ENTRY:
-            BUG("Duplicate partition entry UUID");
+            MSG_BUG("Duplicate partition entry UUID");
             return ParseUUIDResult::SKIPPED_WORSE_UUID;
 
           case UUIDType::FILE_SYSTEM:
@@ -262,7 +262,7 @@ try_parse_part_table_uuid_or_fs_uuid(const char *const assignment, size_t length
             break;
 
           case UUIDType::FILE_SYSTEM:
-            BUG("Duplicate file system UUID");
+            MSG_BUG("Duplicate file system UUID");
             return ParseUUIDResult::SKIPPED_WORSE_UUID;
         }
 
@@ -433,7 +433,7 @@ static bool parse_volume_info(const char *const output, size_t length,
 
 bool Devices::get_volume_information(const std::string &devname, VolumeInfo &info)
 {
-    log_assert(devices_os_tools != nullptr);
+    msg_log_assert(devices_os_tools != nullptr);
 
     const int idx = devname_get_volume_number(devname.c_str());
 
@@ -601,7 +601,7 @@ static bool get_device_links(const std::string &dev_device, const std::string &v
 std::pair<std::string, std::string>
 Devices::map_mountpoint_path_to_device_links(const char *path)
 {
-    log_assert(devices_os_tools != nullptr);
+    msg_log_assert(devices_os_tools != nullptr);
 
     std::pair<std::string, std::string> result;
 

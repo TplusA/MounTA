@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2019, 2020, 2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2019, 2020, 2022, 2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -31,6 +31,10 @@ namespace MockDevicesOs
 /*! Base class for expectations. */
 class Expectation
 {
+  private:
+    std::string name_;
+    unsigned int sequence_serial_;
+
   public:
     Expectation(const Expectation &) = delete;
     Expectation(Expectation &&) = default;
@@ -38,6 +42,9 @@ class Expectation
     Expectation &operator=(Expectation &&) = default;
     Expectation() {}
     virtual ~Expectation() {}
+    const std::string &get_name() const { return name_; }
+    void set_sequence_serial(unsigned int ss) { sequence_serial_ = ss; }
+    unsigned int get_sequence_serial() const { return sequence_serial_; }
 };
 
 class Mock

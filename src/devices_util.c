@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2019, 2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -50,8 +50,8 @@ static const char *find_trailing_number(const char *devname)
 
 int devname_get_volume_number(const char *devname)
 {
-    log_assert(devname != NULL);
-    log_assert(devname[0] != '\0');
+    msg_log_assert(devname != NULL);
+    msg_log_assert(devname[0] != '\0');
 
     if(isdigit(devname[0]))
     {
@@ -74,7 +74,7 @@ int devname_get_volume_number(const char *devname)
         msg_error(ERANGE, LOG_NOTICE,
                   "Number in device name out of range: \"%s\"", devname);
     else
-        BUG("Failed parsing validated number");
+        MSG_BUG("Failed parsing validated number");
 
     return -1;
 }

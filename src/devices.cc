@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2021, 2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2021--2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -82,7 +83,7 @@ bool Devices::Device::add_volume(std::unique_ptr<Devices::Volume> &&volume)
     auto result = volumes_.insert(std::make_pair(idx, std::move(volume)));
 
     if(!result.second)
-        BUG("Insertion of volume failed");
+        MSG_BUG("Insertion of volume failed");
 
     return result.second;
 }
@@ -94,11 +95,11 @@ void Devices::Device::drop_volumes()
 
 bool Devices::Device::mk_working_directory(std::string &&path)
 {
-    log_assert(!path.empty());
-    log_assert(state_ == OK);
+    msg_log_assert(!path.empty());
+    msg_log_assert(state_ == OK);
 
     if(mountpoint_container_path_.exists(Automounter::FailIf::NOT_FOUND))
-        BUG("Overwriting device mountpoint container");
+        MSG_BUG("Overwriting device mountpoint container");
 
     if(path == mountpoint_container_path_.str())
         return true;
@@ -111,11 +112,11 @@ bool Devices::Device::mk_working_directory(std::string &&path)
 
 void Devices::Device::set_mountpoint_directory(std::string &&path)
 {
-    log_assert(!path.empty());
-    log_assert(state_ == OK);
+    msg_log_assert(!path.empty());
+    msg_log_assert(state_ == OK);
 
     if(mountpoint_container_path_.exists(Automounter::FailIf::NOT_FOUND))
-        BUG("Overwriting watched mountpoint path");
+        MSG_BUG("Overwriting watched mountpoint path");
 
     mountpoint_container_path_ = std::move(Automounter::Directory(std::move(path)));
     mountpoint_container_path_.set_externally_managed();
@@ -128,7 +129,7 @@ bool Devices::Device::probe()
 
 bool Devices::Device::do_probe()
 {
-    log_assert(state_ == SYNTHETIC);
+    msg_log_assert(state_ == SYNTHETIC);
 
     DeviceInfo devinfo;
 
@@ -211,20 +212,20 @@ bool Devices::Volume::mount(const Automounter::FSMountOptions &mount_options)
 
 void Devices::Volume::set_mounted()
 {
-    log_assert(state_ == PENDING);
+    msg_log_assert(state_ == PENDING);
     state_ = MOUNTED;
 }
 
 void Devices::Volume::set_removed()
 {
-    log_assert(state_ == MOUNTED || state_ == REJECTED);
+    msg_log_assert(state_ == MOUNTED || state_ == REJECTED);
 
     set_eol_state_and_cleanup(REMOVED, true);
 }
 
 void Devices::Volume::set_unusable()
 {
-    log_assert(state_ == PENDING);
+    msg_log_assert(state_ == PENDING);
 
     set_eol_state_and_cleanup(UNUSABLE, true);
 }

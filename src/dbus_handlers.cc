@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2021  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2021, 2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -43,7 +43,7 @@ gboolean dbusmethod_get_all(tdbusMounTA *object,
     g_variant_builder_init(&volumes_builder, G_VARIANT_TYPE("a(ussqs)"));
 
     auto am = static_cast<const Automounter::Core *>(user_data);
-    log_assert(am != nullptr);
+    msg_log_assert(am != nullptr);
 
     for(const auto &device : *am)
     {

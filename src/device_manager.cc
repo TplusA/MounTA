@@ -1,5 +1,6 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2021, 2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2021--2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -92,8 +93,8 @@ static bool is_link_to_partition(const char *devlink_hyphen)
 
 const std::string mk_root_devlink_name(const char *devlink)
 {
-    log_assert(devlink != nullptr);
-    log_assert(devlink[0] != '\0');
+    msg_log_assert(devlink != nullptr);
+    msg_log_assert(devlink[0] != '\0');
 
     const char *hyphen = strrchr(devlink, '-');
 
@@ -128,7 +129,7 @@ std::shared_ptr<Devices::Device>
 Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
                                bool &have_probed_containing_device)
 {
-    log_assert(devlink != nullptr);
+    msg_log_assert(devlink != nullptr);
 
     volume = nullptr;
     have_probed_containing_device = false;
@@ -155,8 +156,8 @@ Devices::AllDevices::new_entry(const char *devlink, Devices::Volume *&volume,
         {
             auto device_and_volume = add_or_get_volume(device, devlink, data.devname_, volinfo);
 
-            log_assert(device_and_volume.first == device ||
-                       (device == nullptr && device_and_volume.first != nullptr));
+            msg_log_assert(device_and_volume.first == device ||
+                           (device == nullptr && device_and_volume.first != nullptr));
 
             volume = device_and_volume.second;
 
@@ -211,7 +212,7 @@ Devices::AllDevices::new_entry_by_mountpoint(const char *mountpoint_path,
 
 std::string Devices::AllDevices::take_volume_device_for_mountpoint(const char *mountpoint_path)
 {
-    log_assert(mountpoint_path != nullptr);
+    msg_log_assert(mountpoint_path != nullptr);
 
     std::string result;
     auto it(volume_device_for_mountpoint_.find(mountpoint_path));
@@ -222,7 +223,7 @@ std::string Devices::AllDevices::take_volume_device_for_mountpoint(const char *m
         volume_device_for_mountpoint_.erase(it);
     }
 
-    BUG_IF(result.empty(), "Failed to map mountpoint to device name");
+    MSG_BUG_IF(result.empty(), "Failed to map mountpoint to device name");
     return result;
 }
 
@@ -230,7 +231,7 @@ bool Devices::AllDevices::remove_entry(const char *devlink,
                                        const std::function<void(const Device &)> &after_removal_notification,
                                        const std::function<void(const Device &)> &before_removal_notification)
 {
-    log_assert(devlink != nullptr);
+    msg_log_assert(devlink != nullptr);
     return remove_entry(get_device_iter_by_devlink(devices_, devlink),
                         after_removal_notification,
                         before_removal_notification);
@@ -282,7 +283,7 @@ mk_device(Devices::AllDevices::DevContainerType &all_devices,
 
         if(!result.second)
         {
-            BUG("Insertion of device failed");
+            MSG_BUG("Insertion of device failed");
             device = nullptr;
         }
     }

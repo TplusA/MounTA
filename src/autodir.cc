@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017, 2019, 2020, 2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2017, 2019, 2020, 2022, 2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -27,13 +27,13 @@ bool Automounter::Directory::create()
 {
     if(is_created_)
     {
-        BUG("Directory \"%s\" already created", absolute_path_.c_str());
+        MSG_BUG("Directory \"%s\" already created", absolute_path_.c_str());
         return false;
     }
 
     if(absolute_path_.empty())
     {
-        BUG("Cannot create directory, name is empty");
+        MSG_BUG("Cannot create directory, name is empty");
         return false;
     }
 
@@ -98,7 +98,7 @@ void Automounter::Directory::cleanup()
 void Automounter::Mountpoint::set(std::string &&path)
 {
     if(directory_.exists(FailIf::NOT_FOUND))
-        BUG("Overwriting mountpoint path");
+        MSG_BUG("Overwriting mountpoint path");
 
     cleanup();
     directory_ = std::move(Directory(std::move(path)));
@@ -127,19 +127,19 @@ bool Automounter::Mountpoint::mount(const std::string &device_name,
 {
     if(directory_.str().empty())
     {
-        BUG("Cannot mount empty mointpoint");
+        MSG_BUG("Cannot mount empty mointpoint");
         return false;
     }
 
     if(!directory_.exists(FailIf::NOT_FOUND))
     {
-        BUG("Mointpoint \"%s\" does not exist", directory_.str().c_str());
+        MSG_BUG("Mointpoint \"%s\" does not exist", directory_.str().c_str());
         return false;
     }
 
     if(is_mounted_)
     {
-        BUG("Mointpoint \"%s\" already mounted", directory_.str().c_str());
+        MSG_BUG("Mointpoint \"%s\" already mounted", directory_.str().c_str());
         return false;
     }
 

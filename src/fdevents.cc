@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019, 2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019, 2022, 2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -73,8 +73,8 @@ void FdEvents::init_path_buffer(const char *path)
 int FdEvents::watch(const char *path,
                     const callback_type &handler, void *user_data)
 {
-    log_assert(path != nullptr);
-    log_assert(handler != nullptr);
+    msg_log_assert(path != nullptr);
+    msg_log_assert(handler != nullptr);
 
     close_fd_and_wd(fd_, wd_);
 
@@ -110,7 +110,7 @@ static ssize_t try_fill_buffer(int fd, uint8_t *event_buffer, size_t buffer_size
 {
     if(fd < 0)
     {
-        BUG("Attempted to process events on closed inotify instance");
+        MSG_BUG("Attempted to process events on closed inotify instance");
         return -1;
     }
 
@@ -125,7 +125,7 @@ static ssize_t try_fill_buffer(int fd, uint8_t *event_buffer, size_t buffer_size
 
     if(len == 0 || (len < 0 && errno == EAGAIN))
     {
-        BUG("Attempted to process inotify events, but have no events");
+        MSG_BUG("Attempted to process inotify events, but have no events");
         return 0;
     }
     else

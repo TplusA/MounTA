@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2017, 2019--2022  T+A elektroakustik GmbH & Co. KG
+ * Copyright (C) 2015, 2017, 2019--2023  T+A elektroakustik GmbH & Co. KG
  *
  * This file is part of MounTA.
  *
@@ -32,6 +32,8 @@
 #include "mock_messages.hh"
 #include "mock_os.hh"
 #include "mock_devices_os.hh"
+
+#include <array>
 
 /* Stuff the linker wants, but we don't need */
 bool os_rmdir(const char *path, bool must_exist)
