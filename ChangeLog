@@ -1,3 +1,9 @@
+2023-01-16  Robert Tiemann  <r.tiemann@ta-hifi.de>
+
+	* Version 1.6 released.
+
+	* Devices: Improve compatibility with slow drives.
+
 2022-10-20  Robert Tiemann  <r.tiemann@ta-hifi.de>
 
 	* Version 1.5 released.
@@ -178,4 +184,4 @@
 	  This is software in alpha phase.
 
 
-Copyright 2015--2022 T+A elektroakustik GmbH & Co. KG
+Copyright 2015--2023 T+A elektroakustik GmbH & Co. KG
