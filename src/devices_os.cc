@@ -487,9 +487,7 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
             os_nanosleep(&delay);
         }
         else
-            msg_vinfo(MESSAGE_LEVEL_NORMAL,
-                      "Failed reading UUID from %s, no retries left",
-                      devname.c_str());
+            msg_info("Failed reading UUID from %s", devname.c_str());
     }
 
     return false;
