@@ -481,7 +481,7 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
             const int delay_ms = (i + 1) * 100;
             const struct timespec delay {0, delay_ms * 1000 * 1000};
 
-            msg_vinfo(MESSAGE_LEVEL_NORMAL,
+            msg_vinfo(MESSAGE_LEVEL_DEBUG,
                       "Failed reading UUID from %s, retrying in %d ms",
                       devname.c_str(), delay_ms);
             os_nanosleep(&delay);
