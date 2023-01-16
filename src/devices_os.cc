@@ -431,20 +431,10 @@ static bool parse_volume_info(const char *const output, size_t length,
         !volinfo.fstype.empty();
 }
 
-bool Devices::get_volume_information(const std::string &devname, VolumeInfo &info)
+static bool try_get_volume_information(const std::string &devname, int idx,
+                                       Devices::VolumeInfo &info,
+                                       const Tempfile &tempfile)
 {
-    msg_log_assert(devices_os_tools != nullptr);
-
-    const int idx = devname_get_volume_number(devname.c_str());
-
-    if(idx < 0)
-        return false;
-
-    Tempfile tempfile;
-
-    if(!tempfile.created())
-        return false;
-
     if(os_system_formatted(msg_is_verbose(MESSAGE_LEVEL_DEBUG),
                            "%s info --query all \"%s\" >\"%s\"",
                            devices_os_tools->udevadm_.executable_.c_str(),
@@ -463,6 +453,46 @@ bool Devices::get_volume_information(const std::string &devname, VolumeInfo &inf
     os_unmap_file(&output);
 
     return retval;
+}
+
+bool Devices::get_volume_information(const std::string &devname, VolumeInfo &info)
+{
+    msg_log_assert(devices_os_tools != nullptr);
+
+    const int idx = devname_get_volume_number(devname.c_str());
+
+    if(idx < 0)
+        return false;
+
+    Tempfile tempfile;
+
+    if(!tempfile.created())
+        return false;
+
+    static const int maximum_retries = 3;
+
+    for(int i = 0; i < maximum_retries; ++i)
+    {
+        if(try_get_volume_information(devname, idx, info, tempfile))
+            return true;
+
+        if(i + 1 < maximum_retries)
+        {
+            const int delay_ms = (i + 1) * 100;
+            const struct timespec delay {0, delay_ms * 1000 * 1000};
+
+            msg_vinfo(MESSAGE_LEVEL_NORMAL,
+                      "Failed reading UUID from %s, retrying in %d ms",
+                      devname.c_str(), delay_ms);
+            os_nanosleep(&delay);
+        }
+        else
+            msg_vinfo(MESSAGE_LEVEL_NORMAL,
+                      "Failed reading UUID from %s, no retries left",
+                      devname.c_str());
+    }
+
+    return false;
 }
 
 static bool get_device_and_volume_devnames(const char *path, std::string &dev_device,
